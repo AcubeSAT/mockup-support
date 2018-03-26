@@ -78,13 +78,62 @@ int16_t MPU9250ReadTempDataRaw(void)
 	return ((int16_t)data[0] << 8)|data[1];
 }
 
-void MPU9250GetAcceleration(int16_t *acc)
+void MPU9250GetAcceleration(double *acc)
 {
 	int16_t data[3]; //Save X,Y,Z acceleration data
-	float multFactor = 0;
+	uint8_t scale = 0; //Save the current scale, as read from the register
+	double multFactor = 0.0; //Save the conversion factor for the acelerometer
 	
-	MPU9250ReadAccelDataRaw(data);
+	scale = (TWIReadByte2(MPU9250_ADDR, ACCEL_CONFIG) & (0x03 << 3)) >> 3; //Get the current reading scale
+	MPU9250ReadAccelDataRaw(data); //Get the raw accelerometer data
 	
-	//Wehave to get the current scale
+	//Select the conversion factor according to scale setting
+	switch(scale)
+	{
+		case 0:
+			multFactor = 1.0/16384.0;
+			break;
+		case 1:
+			multFactor = 1.0/8192.0;
+			break;
+		case 2:
+			multFactor = 1.0/4096.0;
+			break;
+		case 3:
+			multFactor = 1.0/2048.0;
+			break;
+	}
+	acc[0] = (double)data[0]*multFactor;
+	acc[1] = (double)data[1]*multFactor;
+	acc[2] = (double)data[2]*multFactor;
+}
+
+void MPU9250GetAngularVel(double *angVel)
+{
+	int16_t data[3]; //Save raw X,Y,Z angular velocity data
+	uint8_t scale = 0; //Save the current scale, as read from the register
+	double multFactor = 0.0; //Save the conversion factor for the gyroscope
 	
+	scale = (TWIReadByte2(MPU9250_ADDR, GYRO_CONFIG) & (0x03 << 3)) >> 3; //Get the current reading scale
+	MPU9250ReadGyroDataRaw(data); //Get the raw accelerometer data
+	
+	//Select the conversion factor according to scale setting
+	switch(scale)
+	{
+		case 0:
+			multFactor = 1.0/131.0;
+			break;
+		case 1:
+			multFactor = 1.0/65.5;
+			break;
+		case 2:
+			multFactor = 1.0/32.8;
+			break;
+		case 3:
+			multFactor = 1.0/16.4;
+			break;
+	}
+	angVel[0] = data[0]*multFactor;
+	angVel[1] = data[1]*multFactor;
+	angVel[2] = data[2]*multFactor;
 }

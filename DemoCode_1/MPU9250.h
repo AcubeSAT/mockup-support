@@ -39,7 +39,7 @@ extern void MPU9250SelfTest(void);
 extern void MPU9250ReadAccelDataRaw(int16_t *acceleration);
 
 /*******************************************************************************************************
- * Read the gysroscope data from the register and save them in the array provided as a pointer
+ * Read the gyroscope data from the register and save them in the array provided as a pointer
  * The first element is the value for the x-axis, the second element is the y-axis value and the third
  * element of the array is the value of angular velocity for the z-axis.
  *******************************************************************************************************/
@@ -49,6 +49,16 @@ extern void MPU9250ReadGyroDataRaw(int16_t *angular);
  * Read the temperature from the integrated thermometer and return it.
  *******************************************************************************************************/
 extern int16_t MPU9250ReadTempDataRaw(void);
+
+/*******************************************************************************************************
+ * Get the correctly scaled X,Y,Z accelerometer data. Be careful as the return is a pointer to double.
+ *******************************************************************************************************/
+extern void MPU9250GetAcceleration(double *acc);
+
+/*******************************************************************************************************
+ * Get the correctly scaled X,Y,Z gyroscope data. Be careful as the return is a pointer to double.
+ *******************************************************************************************************/
+extern void MPU9250GetAngularVel(double *angVel);
 
 
 #endif //_MPU9250_LIB_H_
