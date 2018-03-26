@@ -21,8 +21,14 @@ void MPU9250Init(void)
 	TWIWriteByte2(MPU9250_ADDR, SMPLRT_DIV, 0x04);
 	
 	regVal = TWIReadByte2(MPU9250_ADDR, GYRO_CONFIG);
-	regVal &= ~((0x02)|(0x18)); //Clear Fchoice bits[1:0] and AFS[4:3]
+	regVal &= ~(0x02); //Clear Fchoice bits[1:0]
+	regVal &= ~(0x18); //Clear AFS[4:3]
 	regVal |= 0x03 << 3; //Set the gyro to fullscale
+	TWIWriteByte2(MPU9250_ADDR, GYRO_CONFIG, regVal);
+	
+	regVal = TWIReadByte2(MPU9250_ADDR, ACCEL_CONFIG);
+	regVal &= ~(0x18);
+	regVal |= 0x03 << 3;
 	TWIWriteByte2(MPU9250_ADDR, ACCEL_CONFIG, regVal);
 	
 	regVal = TWIReadByte2(MPU9250_ADDR, ACCEL_CONFIG2);
