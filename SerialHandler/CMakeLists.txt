@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 #set(CMAKE_BUILD_TYPE Debug)
 
 find_package(glfw3 REQUIRED)
-find_package(OpenGL REQUIRED)
+#find_package(glew REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Boost 1.50 COMPONENTS system REQUIRED )
 
@@ -17,7 +17,7 @@ add_subdirectory (lib)
 
 set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp)
 add_executable(LinuxReceiver ${SOURCE_FILES})
-target_link_libraries (LinuxReceiver ImGui ImGuiDemo glfw GL)
+target_link_libraries (LinuxReceiver ImGui ImGuiDemo glfw GL GLEW)
 target_link_libraries (LinuxReceiver mysqlcppconn)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})

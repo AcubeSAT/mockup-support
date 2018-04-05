@@ -15,6 +15,7 @@
 #include "lib/imgui/imgui.h"
 #include "imgui_impl_glfw.h"
 #include <stdio.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <zmq.hpp>
@@ -180,21 +181,29 @@ int main() {
   glfwSetErrorCallback(error_callback);
   if (!glfwInit())
     return 1;
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   GLFWwindow *window = glfwCreateWindow(1280, 720, "ASAT CubeSAT Demonstration", NULL, NULL);
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); // Enable vsync
+  ImGui_ImplGlfwGL3_GLEWInit();
 
   // Setup ImGui binding
-  ImGui_ImplGlfw_Init(window, true);
+  ImGui::CreateContext();
+  ImGuiIO &imguiIo = ImGui::GetIO();
+
+  ImGui_ImplGlfwGL3_Init(window, true);
 
   // Load Fonts
   // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)
-  ImGuiIO &imguiIo = ImGui::GetIO();
+  ImGui::StyleColorsDark();
+//  ImGui::StyleColorsClassic();
   //io.Fonts->AddFontDefault();
-//    io.Fonts->AddFontFromFileTTF("../lib/imgui/extra_fonts/Cousine-Regular.ttf", 15.0f);
-  imguiIo.Fonts->AddFontFromFileTTF("../lib/imgui/extra_fonts/DroidSans.ttf", 16.0f);
-//    io.Fonts->AddFontFromFileTTF("../lib/imgui/extra_fonts/ProggyClean.ttf", 13.0f);
-//    io.Fonts->AddFontFromFileTTF("../lib/imgui/extra_fonts/ProggyTiny.ttf", 10.0f);
+//    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
+  imguiIo.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
+//    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
+//    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
   //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 
   bool show_test_window = false;
@@ -203,10 +212,10 @@ int main() {
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplGlfwGL3_NewFrame();
     if (show_test_window) {
       ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-      ImGui::ShowTestWindow(&show_test_window);
+      ImGui::ShowTestWindow();
     }
 
     ImGui::Begin("ASAT CubeSAT");
@@ -261,6 +270,7 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT);
     //glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound
     ImGui::Render();
+    ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
   }
 
@@ -271,7 +281,7 @@ int main() {
   std::cout << "Thread stopped." << std::endl;
 
   // Cleanup
-  ImGui_ImplGlfw_Shutdown();
+  ImGui_ImplGlfwGL3_Shutdown();
   glfwTerminate();
 
   return 0;
