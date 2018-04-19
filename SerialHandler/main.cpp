@@ -15,7 +15,7 @@
 #include "lib/imgui/imgui.h"
 #include "imgui_impl_glfw.h"
 #include <stdio.h>
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 
 #include <zmq.hpp>
@@ -187,7 +187,8 @@ int main() {
   GLFWwindow *window = glfwCreateWindow(1280, 720, "ASAT CubeSAT Demonstration", NULL, NULL);
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); // Enable vsync
-  ImGui_ImplGlfwGL3_GLEWInit();
+  gl3wInit();
+  //ImGui_ImplGlfwGL3_GLEWInit();
 
   // Setup ImGui binding
   ImGui::CreateContext();
@@ -249,13 +250,14 @@ int main() {
     dataSentDB = false;
     dataSentZMQ = false;
 
+    /*
     glBegin(GL_LINE_LOOP);//start drawing a line loop
     glVertex3f(-1.0f, 0.0f, 0.0f);//left of window
     glVertex3f(0.0f, -1.0f, 0.0f);//bottom of window
     glVertex3f(1.0f, 0.0f, 0.0f);//right of window
     glVertex3f(0.0f, 1.0f, 0.0f);//top of window
     glEnd();//end drawing of line loo
-
+*/
     ImGui::Text("Magnetic Field Strength (uT)");
     ImGui::PlotLines("", magneticData, GRAPH_SIZE, 0, nullptr, 0, FLT_MAX,
                      ImVec2(ImGui::GetContentRegionAvailWidth(), 80));
