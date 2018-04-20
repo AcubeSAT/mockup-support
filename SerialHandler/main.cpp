@@ -39,27 +39,20 @@ bool dataSentDB = false;
 bool dataSendingZMQ = false;
 bool dataSentZMQ = false;
 
-void dataAcquisition() {
-  std::string host, username, password, database, port;
-  std::ifstream infile;
-  infile.open("config");
-  if (!infile.is_open()) {
-    std::cerr << "Please create a config file with: host username password database serialport" << std::endl;
-    return;
-  }
-  infile >> host >> username >> password >> database >> port;
-  infile.close();
+bool sqlDataPending = false;
+std::array<float,3> sqlData;
+
+std::string host, username, password, database, port;
+
+void sqlStorage() {
+
+
 
   sql::Driver *driver;
   sql::Connection *con;
   sql::PreparedStatement *stMagnetic;
   sql::PreparedStatement *stBattery;
   sql::PreparedStatement *stSignal;
-
-  // ZeroMQ initialisation
-  zmq::context_t context(1);
-  zmq::socket_t publisher(context, ZMQ_PUB);
-  publisher.bind("tcp://*:5555");
 
   // MySQL initialisation
   driver = get_driver_instance();
@@ -73,6 +66,44 @@ void dataAcquisition() {
       "INSERT INTO battery(value,time) VALUES(?,NOW(2)) ON DUPLICATE KEY UPDATE value = ?");
   stSignal = con->prepareStatement(
       "INSERT INTO `signal`(value,time) VALUES(?,NOW(2))  ON DUPLICATE KEY UPDATE value = ?");
+
+    while(true) {
+        if(!sqlDataPending) {
+            continue;
+        }
+        sqlDataPending = false;
+
+        dataSendingDB = true;
+
+        std::array<float, 3> data = sqlData;
+
+        // Perform the update
+        stMagnetic->setDouble(1, data[0]);
+        stMagnetic->setDouble(2, data[0]);
+        stMagnetic->execute();
+
+        stSignal->setDouble(1, data[1]);
+        stSignal->setDouble(2, data[1]);
+        stSignal->execute();
+
+        stBattery->setDouble(1, data[2]);
+        stBattery->setDouble(2, data[2]);
+        stBattery->execute();
+
+        dataSentDB = true;
+    }
+
+    delete stMagnetic;
+    delete stSignal;
+    delete con;
+
+}
+
+void dataAcquisition() {
+  // ZeroMQ initialisation
+  zmq::context_t context(1);
+  zmq::socket_t publisher(context, ZMQ_PUB);
+  publisher.bind("tcp://*:5555");
 
   try {
     // Serial interface initialisation
@@ -97,9 +128,10 @@ void dataAcquisition() {
 
         if (!ec) {
           float valMagx, valMagy, valMagz, valTemp, valBat, valPressure, valSignal;
+          valSignal = 0;
           std::getline(is, line);
           iss = std::istringstream(line);
-          iss >> valTemp >> valMagx >> valMagy >> valMagz >> valPressure >> valBat >> valSignal;
+          iss >> valTemp >> valMagx >> valMagy >> valMagz >> valPressure >> valBat;// >> valSignal;
           dataReceived = true;
 
           float norm = sqrtf(powf(valMagx, 2) + powf(valMagy, 2) + powf(valMagz, 2));
@@ -115,30 +147,19 @@ void dataAcquisition() {
                 << valSignal << '\t'
                 << std::endl;
 
-            dataSendingDB = true;
+              sqlDataPending = true;
+              sqlData[0] = valTemp;
+              sqlData[1] = valMagx;
+              sqlData[2] = valMagy;
 
-            // Perform the update
-            stMagnetic->setDouble(1, norm);
-            stMagnetic->setDouble(2, norm);
-            stMagnetic->execute();
-
-            stSignal->setDouble(1, valSignal);
-            stSignal->setDouble(2, valSignal);
-            stSignal->execute();
-
-            stBattery->setDouble(1, valBat);
-            stBattery->setDouble(2, valBat);
-            stBattery->execute();
-
-            dataSentDB = true;
-            last_update = std::chrono::steady_clock::now();
+              last_update = std::chrono::steady_clock::now();
           }
 
           dataSendingZMQ = true;
           // Send the data to ZeroMQ
           zmq::message_t message(255);
           snprintf ((char *) message.data(), 255,
-                    "%f %f %f %f %f %f %f", valTemp, valMagx, valMagy, valMagz, valPressure, valBat, valSignal);
+                    "cubesat %f %f %f %f %f %f %f", valTemp, valMagx, valMagy, valMagz, valPressure, valBat, valSignal);
           publisher.send(message);
           dataSentZMQ = true;
 
@@ -167,15 +188,23 @@ void dataAcquisition() {
     std::cerr << "Unable to open interface " << port << ": " << e.what();
   }
 
-  delete stMagnetic;
-  delete stSignal;
-  delete con;
+
 }
 
 int main() {
   std::cout << "Starting" << std::endl;
 
+std::ifstream infile;
+infile.open("config");
+if (!infile.is_open()) {
+    std::cerr << "Please create a config file with: host username password database serialport" << std::endl;
+    return 5;
+}
+infile >> host >> username >> password >> database >> port;
+infile.close();
+
   std::thread dataThread(dataAcquisition);
+  std::thread sqlThread(sqlStorage);
 
   // Setup window
   glfwSetErrorCallback(error_callback);
@@ -202,7 +231,7 @@ int main() {
 //  ImGui::StyleColorsClassic();
   //io.Fonts->AddFontDefault();
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
-  imguiIo.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
+  imguiIo.Fonts->AddFontFromFileTTF("lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
   //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());

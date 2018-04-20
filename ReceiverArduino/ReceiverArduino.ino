@@ -52,7 +52,7 @@ long lastTime = 0;
 float r_temperature, r_magx, r_magy, r_magz, r_pressure, r_battery, r_level;
 float signalAverage = 0.8;
 
-const float signal_refresh_per_second = 5;
+const float signal_refresh_per_second = 20;
 
 void setup() {
   Serial.begin(115200); // Debugging only
