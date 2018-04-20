@@ -1,0 +1,203 @@
+fileFormatVersion: 2
+guid: 32ea1a6c8a62c42e1a4044726744bc5d
+timeCreated: 1524239578
+licenseType: Free
+ModelImporter:
+  serializedVersion: 22
+  fileIDToRecycleName:
+    100000: //RootNode
+    100002: Null_1_Box011
+    100004: Null_1_Object021
+    100006: Null_1_Object061
+    100008: Null_3_Box01
+    100010: Null_3_Object02
+    100012: Null_3_Object06
+    100014: Null_Component8
+    100016: Null_Null1_Shelves
+    100018: Null_Null1_Shelves-1
+    100020: Null_Null1_Shelves-2
+    100022: Null_Null1_Shelves-3
+    100024: Null_Null1_Shelves-4
+    100026: Null_Null1_Shelves-5
+    100028: Null_Part14
+    100030: Null_Rail1
+    100032: Null_Rail2
+    100034: Null_Rail3
+    100036: Null_Rail4
+    100038: Plane
+    400000: //RootNode
+    400002: Null_1_Box011
+    400004: Null_1_Object021
+    400006: Null_1_Object061
+    400008: Null_3_Box01
+    400010: Null_3_Object02
+    400012: Null_3_Object06
+    400014: Null_Component8
+    400016: Null_Null1_Shelves
+    400018: Null_Null1_Shelves-1
+    400020: Null_Null1_Shelves-2
+    400022: Null_Null1_Shelves-3
+    400024: Null_Null1_Shelves-4
+    400026: Null_Null1_Shelves-5
+    400028: Null_Part14
+    400030: Null_Rail1
+    400032: Null_Rail2
+    400034: Null_Rail3
+    400036: Null_Rail4
+    400038: Plane
+    2100000: Null_1_Box011Mat
+    2100002: Null_1_Object021Mat
+    2100004: Null_1_Object061Mat
+    2100006: Null_3_Box01Mat
+    2100008: Null_3_Object02Mat
+    2100010: Null_3_Object06Mat
+    2100012: Null_Component8Mat
+    2100014: Null_Null1_ShelvesMat
+    2100016: Null_Null1_Shelves-1Mat
+    2100018: Null_Null1_Shelves-2Mat
+    2100020: Null_Null1_Shelves-3Mat
+    2100022: Null_Null1_Shelves-4Mat
+    2100024: Null_Null1_Shelves-5Mat
+    2100026: Null_Part14Mat
+    2100028: Null_Rail1Mat
+    2100030: Null_Rail2Mat
+    2100032: Null_Rail3Mat
+    2100034: Null_Rail4Mat
+    2100036: PlaneMat
+    2300000: Null_1_Box011
+    2300002: Null_1_Object021
+    2300004: Null_1_Object061
+    2300006: Null_3_Box01
+    2300008: Null_3_Object02
+    2300010: Null_3_Object06
+    2300012: Null_Component8
+    2300014: Null_Null1_Shelves
+    2300016: Null_Null1_Shelves-1
+    2300018: Null_Null1_Shelves-2
+    2300020: Null_Null1_Shelves-3
+    2300022: Null_Null1_Shelves-4
+    2300024: Null_Null1_Shelves-5
+    2300026: Null_Part14
+    2300028: Null_Rail1
+    2300030: Null_Rail2
+    2300032: Null_Rail3
+    2300034: Null_Rail4
+    2300036: Plane
+    3300000: Null_1_Box011
+    3300002: Null_1_Object021
+    3300004: Null_1_Object061
+    3300006: Null_3_Box01
+    3300008: Null_3_Object02
+    3300010: Null_3_Object06
+    3300012: Null_Component8
+    3300014: Null_Null1_Shelves
+    3300016: Null_Null1_Shelves-1
+    3300018: Null_Null1_Shelves-2
+    3300020: Null_Null1_Shelves-3
+    3300022: Null_Null1_Shelves-4
+    3300024: Null_Null1_Shelves-5
+    3300026: Null_Part14
+    3300028: Null_Rail1
+    3300030: Null_Rail2
+    3300032: Null_Rail3
+    3300034: Null_Rail4
+    3300036: Plane
+    4300000: Null_1_Box011
+    4300002: Null_1_Object021
+    4300004: Null_1_Object061
+    4300006: Null_3_Box01
+    4300008: Null_3_Object02
+    4300010: Null_3_Object06
+    4300012: Null_Component8
+    4300014: Null_Null1_Shelves
+    4300016: Null_Null1_Shelves-1
+    4300018: Null_Null1_Shelves-2
+    4300020: Null_Null1_Shelves-3
+    4300022: Null_Null1_Shelves-4
+    4300024: Null_Null1_Shelves-5
+    4300026: Null_Part14
+    4300028: Null_Rail1
+    4300030: Null_Rail2
+    4300032: Null_Rail3
+    4300034: Null_Rail4
+    4300036: Plane
+  externalObjects: {}
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 0
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
