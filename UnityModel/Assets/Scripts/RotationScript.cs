@@ -24,7 +24,7 @@ public class RotationScript : MonoBehaviour
 
     //float acc_normalizer_factor = 0.00025f;
     //float gyro_normalizer_factor = 1.0f / 32768.0f;   // 32768 is max value captured during test on imu
-    float gyro_normalizer_factor = 1.0f / 3268.0f;   // 32768 is max value captured during test on imu
+    float gyro_normalizer_factor = 1.0f;   // 32768 is max value captured during test on imu
 
 
     float curr_angle_x = 0;
@@ -36,7 +36,7 @@ public class RotationScript : MonoBehaviour
     float curr_offset_z = 0;
 
     // Increase the speed/influence rotation
-    public float factor = 7;
+    public float factor = 3;
 
     //Booleans to enable the rotation and the translation of our  model
     public bool enableRotation;
@@ -92,6 +92,7 @@ public class RotationScript : MonoBehaviour
     void Update()
     {
         received = false;
+        calibrated = true;
         string dataString = "null received";
 
 
@@ -160,16 +161,19 @@ public class RotationScript : MonoBehaviour
             count.text = string.Format("Counter: {0:N0}", counter);
 
             // prevent little noise effect
-            if (Mathf.Abs(gx) < 0.025f) gx = 0f;
-            if (Mathf.Abs(gy) < 0.025f) gy = 0f;
-            if (Mathf.Abs(gz) < 0.025f) gz = 0f;
+            //if (Mathf.Abs(gx) < 0.025f) gx = 0f;
+            //if (Mathf.Abs(gy) < 0.025f) gy = 0f;
+            //if (Mathf.Abs(gz) < 0.025f) gz = 0f;
 
             if (calibrated)
             {
                 counter++;
-                curr_angle_x += gx-avgGx;
+                curr_angle_x = gx;
+                curr_angle_y = gy;
+                curr_angle_z = gz;
+                /*curr_angle_x += gx-avgGx;
                 curr_angle_y += gy-avgGy;
-                curr_angle_z += gz-avgGz;
+                curr_angle_z += gz-avgGz;*/
 
                 //if (enableTranslation) target.transform.position = new Vector3(curr_offset_x, curr_offset_y, curr_offset_z);
                 if (enableRotation) target.transform.rotation = Quaternion.Euler(curr_angle_x * factor, curr_angle_y * factor, curr_angle_z * factor);

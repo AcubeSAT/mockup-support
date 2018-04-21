@@ -27,6 +27,9 @@ const int GRAPH_SIZE = 300;
 const int update_ms = 1000;
 const int update_zmq_ms = 50;
 
+const int MAX_CALIBRATION_VALUES = 80;
+const float gyro_normalizer_factor = 1.0f / 3268.0f;
+
 static void error_callback(int error, const char *description) {
     fprintf(stderr, "Error %d: %s\n", error, description);
 }
@@ -43,6 +46,10 @@ bool dataSentZMQ = false;
 bool zmqEnabled = true;
 char pendingCommand = 0;
 
+std::array<float, 3> calibration;
+bool calibrated = false;
+int calibrationValues;
+
 bool sqlDataPending = false;
 std::array<float, 7> sqlData;
 
@@ -50,6 +57,16 @@ std::string host, username, password, database, port;
 
 zmq::context_t context(1);
 zmq::socket_t publisher(context, ZMQ_PUB);
+
+float varAngx = 0, varAngy = 0, varAngz = 0;
+
+void resetCalibration() {
+    varAngx = varAngy = varAngz = 0;
+
+    calibrated = false;
+    calibrationValues = -10; // don't include first 10 values
+    calibration = {0,0,0};
+}
 
 void sqlStorage() {
     sql::Driver *driver;
@@ -188,13 +205,43 @@ void dataAcquisition() {
                         last_update = std::chrono::steady_clock::now();
                     }
 
+                    // Calibrate received values
+                    if (!calibrated) {
+                        if (calibrationValues >= 0) {
+                            calibration[0] += valGyrox / (float) MAX_CALIBRATION_VALUES;
+                            calibration[1] += valGyroy / (float) MAX_CALIBRATION_VALUES;
+                            calibration[2] += valGyroz / (float) MAX_CALIBRATION_VALUES;
+                        }
+
+                        calibrationValues++;
+                        if (calibrationValues >= MAX_CALIBRATION_VALUES) {
+                            calibrated = true;
+                        }
+                    }
+                    valGyrox = valGyrox - calibration[0];
+                    valGyroy = valGyroy - calibration[1];
+                    valGyroz = valGyroz - calibration[2];
+
+                    if (calibrated) {
+                        if (fabs(valGyrox * gyro_normalizer_factor) > 0.015){
+                            varAngx += valGyrox * gyro_normalizer_factor;
+                        }
+                        if (fabs(valGyroy * gyro_normalizer_factor) > 0.015){
+                            varAngy += valGyroy * gyro_normalizer_factor;
+                        }
+                        if (fabs(valGyroz * gyro_normalizer_factor) > 0.015){
+                            varAngz += valGyroz * gyro_normalizer_factor;
+                        }
+                    }
+
+
                     dataSendingZMQ = true;
                     // Send the data to ZeroMQ
                     if (zmqEnabled && std::chrono::steady_clock::now() - last_zmq_update > std::chrono::milliseconds(update_zmq_ms)) {
                         zmq::message_t message(128);
                         snprintf((char *) message.data(), 128,
-                                 "cubesat %f %f %f %f", valGyrox, valGyroz,
-                                 valGyroy, valBright);
+                                 "cubesat %f %f %f %f", varAngy, varAngz,
+                                 -varAngx, valBright);
                         publisher.send(message);
                         dataSentZMQ = true;
 
@@ -233,6 +280,7 @@ void dataAcquisition() {
 
 int main() {
     std::cout << "Starting" << std::endl;
+    resetCalibration();
 
     std::ifstream infile;
     infile.open("config");
@@ -334,11 +382,24 @@ int main() {
         glVertex3f(0.0f, 1.0f, 0.0f);//top of window
         glEnd();//end drawing of line loo
     */
-        ImGui::Text("Magnetic Field Strength (uT)");
+        ImGui::Text("Light intensity");
         ImGui::PlotLines("", magneticData, GRAPH_SIZE, 0, nullptr, 0, FLT_MAX,
                          ImVec2(ImGui::GetContentRegionAvailWidth(), 80));
 
         ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
+        ImGui::End();
+
+        ImGui::Begin("Calibration Status");
+        ImGui::Text("Status: %s", (calibrated) ? "ready" : "calibrating");
+        if (ImGui::Button("Recalibrate")) {
+            resetCalibration();
+        }
+        if (ImGui::Button("Reset Position")) {
+            varAngx = varAngy = varAngz = 0;
+        }
+        ImGui::Text("Received values: %d", calibrationValues);
+        ImGui::Text("X: %f, Y: %f, Z: %f", calibration[0], calibration[1], calibration[2]);
+        ImGui::Text("aX: %f, aY: %f, aZ: %f", varAngx, varAngy, varAngz);
         ImGui::End();
 
         ImGui::Begin("Commands to Unity 3D-Model");
