@@ -21,6 +21,7 @@ uint16_t BH1750_ReadWord(void)
 	
 	rcvData |= TWIReadNACK(); //And then the low byte and fuse them together
 	TWIStop(); //Send a stop condition in the next bit
+	
 	return rcvData;
 }
 
@@ -29,6 +30,7 @@ void BH1750_Init(uint8_t resMode)
 	//TWIInit(); //Initialize the I2C interface
 	
 	BH1750_WriteCommand(BH1750_POWERON);
+	BH1750_WriteCommand(BH1750_RESET);
 	BH1750_WriteCommand(resMode);
 }
 

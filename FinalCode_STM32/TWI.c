@@ -59,6 +59,8 @@ uint8_t TWIReadNACK(void)
 {
 	I2C1->CR1 &= ~I2C_CR1_ACK; //Disable acknowledge
 	while(!(I2C1->SR1 & I2C_SR1_RXNE) || !(I2C1->SR2 & I2C_SR2_BUSY)); //Wait until data is received
+	I2C1->CR1 |= I2C_CR1_ACK; //Enable acknowledge
+	
 	return I2C1->DR; //Read the data from the register
 }
 

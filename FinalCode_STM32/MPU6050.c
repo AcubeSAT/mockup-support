@@ -216,20 +216,20 @@ void MPU6050_SetSleepModeStatus(FunctionalState NewState)
  * @param AccelGyro 16-bit signed integer array of length 6
  * @see MPU6050_RA_ACCEL_XOUT_H
  */
-void MPU6050_GetRawAccelGyro(s16* AccelGyro)
+void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper)
 {
-    u8 tmpBuffer[14];
-    MPU6050_I2C_BufferRead(MPU6050_DEFAULT_ADDRESS, tmpBuffer, MPU6050_RA_ACCEL_XOUT_H, 14);
-    /* Get acceleration */
-    for (int i = 0; i < 3; i++)
-        AccelGyro[i] = ((s16) ((u16) tmpBuffer[2 * i] << 8) + tmpBuffer[2 * i + 1]);
-    /* Get Angular rate */
-    for (int i = 4; i < 7; i++)
-        AccelGyro[i - 1] = ((s16) ((u16) tmpBuffer[2 * i] << 8) + tmpBuffer[2 * i + 1]);
-
+	u8 tmpBuffer[14];
+	MPU6050_I2C_BufferRead(MPU6050_DEFAULT_ADDRESS, tmpBuffer, MPU6050_RA_ACCEL_XOUT_H, 14);
+	/* Get acceleration */
+	for (int i = 0; i < 3; i++)
+			AccelGyro[i] = ((s16) ((u16) tmpBuffer[2 * i] << 8) + tmpBuffer[2 * i + 1]);
+	/* Get Angular rate */
+	for (int i = 4; i < 7; i++)
+			AccelGyro[i - 1] = ((s16) ((u16) tmpBuffer[2 * i] << 8) + tmpBuffer[2 * i + 1]);
+	Temper = (((s16)tmpBuffer[6]) << 8)|((s16)tmpBuffer[7]);
 }
 
-void MPU6050_GetCalibAccelGyro(double* AccelGyro)
+/*void MPU6050_GetCalibAccelGyro(double* AccelGyro)
 {
 	int16_t data[6];
 	uint8_t scale = 0; //Save the current scale, as read from the register
@@ -279,14 +279,14 @@ void MPU6050_GetCalibAccelGyro(double* AccelGyro)
 	AccelGyro[3] = (double)data[3]*multFactor;
 	AccelGyro[4] = (double)data[4]*multFactor;
 	AccelGyro[5] = (double)data[5]*multFactor;
-}
+}*/
 
 /** Calculate the calibration values for the offset of the gyroscope.
  * Make sure the the delay is intialized before this library and also if you want a different gyro scale
  * set it after calling this function.
  * @param gyroCalib a pointer to return the calibration data
  */
-void MPU6050_GyroCalib(float *gyroCalib)
+/*void MPU6050_GyroCalib(float *gyroCalib)
 {
 	uint16_t gyrosensitivity  = 131;   //Gyro scale 131 LSB/degrees/sec
 	
@@ -311,7 +311,7 @@ void MPU6050_GyroCalib(float *gyroCalib)
 	gyroCalib[0] = (float) gyro_bias[0]/(float) gyrosensitivity;
   gyroCalib[1] = (float) gyro_bias[1]/(float) gyrosensitivity;
   gyroCalib[2] = (float) gyro_bias[2]/(float) gyrosensitivity;
-}
+}*/
 
 /** Write multiple bits in an 8-bit device register.
  * @param slaveAddr I2C slave device address
@@ -422,6 +422,10 @@ void MPU6050_I2C_Init()
     I2C_Init(MPU6050_I2C, &I2C_InitStructure);
     /* I2C Peripheral Enable */
     I2C_Cmd(MPU6050_I2C, ENABLE);
+		
+		/*I2C_SoftwareResetCmd(MPU6050_I2C, DISABLE);
+		Delay_ms(50);
+		I2C_SoftwareResetCmd(MPU6050_I2C, ENABLE);*/
 }
 
 /**
