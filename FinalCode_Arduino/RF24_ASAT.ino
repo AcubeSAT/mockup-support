@@ -3,6 +3,8 @@
 #include "RF24.h"
 #include "printf.h"
 
+#define BUTTON_PIN 4
+
 /* NRF24L01+ library link: https://github.com/nRF24/RF24 */
 
 /* NRF24L01 connection to Arduino:
@@ -15,19 +17,25 @@
  */
 RF24 radio(7,8); //Make the radio object from the RF24 class and assign CE to PIN 7 and CSN to PIN 8
 
-uint8_t address[6] = "edoN2"; //Address of the dongles (For some reason the address is saved in reverse order)
-uint8_t address_tx[6] = "edoN3"; //Address of the receiving end
+uint8_t address[6] = "SesaB"; //Address of the dongles (For some reason the address is saved in reverse order)
+uint8_t address_tx[6] = "SebuC"; //Address of the receiving end
 uint8_t r_data[32] = ""; //Save the received data
 uint8_t i = 0; //Indexing variable used in printing out the received data
 
 uint8_t nRF24_payload[32];
 uint8_t ledStat = 0;
 
+uint8_t buttonState = 0; //Save the state of the button
+uint8_t lastButtonState = 0;
+
 void setup() 
 {
   Serial.begin(115200); //Initialize the USART to 115200 baud
   radio.begin(); //Initialize the NRF
   //printf_begin(); //Initialize the printing funcion (used only for debugging in printDetails)
+
+  pinMode(BUTTON_PIN, INPUT);
+  digitalWrite(BUTTON_PIN, HIGH);
   
   //Serial.println("The program has started."); //Indicate that we are running
   
@@ -40,7 +48,7 @@ void setup()
   radio.setChannel(99); //Set the TX frequency to 2499MHz
   radio.setPayloadSize(32); //Set the payload size to 32 bytes (Not necessary, just added for completeness)
 
-  radio.openWritingPipe(address_tx);
+  radio.openWritingPipe(address_tx); //Set the address for the transmitting pipe
   radio.openReadingPipe(1, address); //Set the receiving address for the pipe
 
   //radio.printDetails(); //Used in debugging to print out some register values of the NRF
@@ -63,20 +71,40 @@ void loop()
       radio.read(&r_data, sizeof(r_data)); //Read the data from the RX FIFO
       //Serial.print("Received some data: "); //Indicate that we have received something from the RX FIFO
       
-      while(r_data[i] != '\0') //Print the received data (if the received data is not a string, that implementation is dangerous)
-      {Serial.print((char)r_data[i++]);} //Print each character
+      /*while(r_data[i] != '\0') //Print the received data (if the received data is not a string, that implementation is dangerous)
+      {Serial.print((char)r_data[i++]);} //Print each character*/
       
-      Serial.println(""); //Print a new line to have a clearer output
+      //Serial.println(""); //Print a new line to have a clearer output
       i = 0; //Reset the counting variable for the next round
     }
   }
+
+  buttonState = digitalRead(BUTTON_PIN);
+  if(buttonState != lastButtonState)
+  {
+    Serial.println("We are in the button");
+    if (buttonState == LOW)
+    {
+      radio.stopListening();
+      ledStat ^= 1;
+      Serial.println(ledStat);
+      memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+      sprintf((char *)nRF24_payload, "L1:%d", ledStat);
+      Serial.println((char *)nRF24_payload);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+
+      delay(10);
+    }
+  }
+  lastButtonState = buttonState; //Save it avoid getting in again
+  
   //delay(100);
-  radio.stopListening();
+  /*radio.stopListening();
   ledStat ^= 1;
   memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-  sprintf((char *)nRF24_payload, "L1:%d", ledStat);
-  radio.write( nRF24_payload, sizeof(nRF24_payload);
+  sprintf((char *)nRF24_payload, "L1:%d", ledStat);*/
+  //radio.write( nRF24_payload, sizeof(nRF24_payload));
   /*if(!radio.write( nRF24_payload, sizeof(nRF24_payload) ))
   {Serial.println("Failed to send");}*/
-  //delay(500);
+  //delay(50);
 }
