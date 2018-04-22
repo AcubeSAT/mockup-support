@@ -28,7 +28,7 @@ const int update_ms = 1000;
 const int update_zmq_ms = 50;
 
 const int MAX_CALIBRATION_VALUES = 80;
-const float gyro_normalizer_factor = 1.0f / 3268.0f;
+const float gyro_normalizer_factor = 1.0f / 3268.0f * 0.5f;
 
 static void error_callback(int error, const char *description) {
     fprintf(stderr, "Error %d: %s\n", error, description);
@@ -45,6 +45,10 @@ bool dataSendingZMQ = false;
 bool dataSentZMQ = false;
 bool zmqEnabled = true;
 char pendingCommand = 0;
+
+bool flipX = true;
+bool flipY = false;
+bool flipZ = true;
 
 std::array<float, 3> calibration;
 bool calibrated = false;
@@ -223,25 +227,29 @@ void dataAcquisition() {
                     valGyroz = valGyroz - calibration[2];
 
                     if (calibrated) {
-                        if (fabs(valGyrox * gyro_normalizer_factor) > 0.015){
+                        if (fabs(valGyrox * gyro_normalizer_factor) > 0.025){
                             varAngx += valGyrox * gyro_normalizer_factor;
                         }
-                        if (fabs(valGyroy * gyro_normalizer_factor) > 0.015){
+                        if (fabs(valGyroy * gyro_normalizer_factor) > 0.025){
                             varAngy += valGyroy * gyro_normalizer_factor;
                         }
-                        if (fabs(valGyroz * gyro_normalizer_factor) > 0.015){
+                        if (fabs(valGyroz * gyro_normalizer_factor) > 0.005){
                             varAngz += valGyroz * gyro_normalizer_factor;
                         }
                     }
-
+		    int factorX, factorY, factorZ;
+                    factorX = factorY = factorZ = 1;
+                    if (flipX) factorX = -1;
+                    if (flipY) factorY = -1;
+                    if (flipZ) factorZ = -1;
 
                     dataSendingZMQ = true;
                     // Send the data to ZeroMQ
                     if (zmqEnabled && std::chrono::steady_clock::now() - last_zmq_update > std::chrono::milliseconds(update_zmq_ms)) {
                         zmq::message_t message(128);
                         snprintf((char *) message.data(), 128,
-                                 "cubesat %f %f %f %f", varAngy, varAngz,
-                                 -varAngx, valBright);
+                                 "cubesat %f %f %f %f", factorY * varAngy, factorZ * varAngz,
+                                 factorX * varAngx, valBright);
                         publisher.send(message);
                         dataSentZMQ = true;
 
@@ -391,6 +399,11 @@ int main() {
 
         ImGui::Begin("Calibration Status");
         ImGui::Text("Status: %s", (calibrated) ? "ready" : "calibrating");
+	ImGui::Checkbox("Flip X", &flipX);
+	ImGui::SameLine();
+	ImGui::Checkbox("Flip Y", &flipY);
+	ImGui::SameLine();
+	ImGui::Checkbox("Flip Z", &flipZ);
         if (ImGui::Button("Recalibrate")) {
             resetCalibration();
         }
