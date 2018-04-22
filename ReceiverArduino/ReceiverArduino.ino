@@ -132,7 +132,7 @@ void loop()
           // Various data
           sscanf(r_data + 1, "%d", &(values[6]));
           // Process brightness with gamma
-          values[6] = BRIGHTNESS_MAX*pow(values[6]/16387.0,0.5);
+          values[6] = BRIGHTNESS_MAX*pow(values[6]/32387.0,1);
           if(values[6] < 0) values[6] = BRIGHTNESS_MAX;
           break;
         case 'B':
