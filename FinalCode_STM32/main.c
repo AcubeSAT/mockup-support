@@ -2,54 +2,67 @@
 #include <string.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "uart.h"
 #include "delay.h"
 #include "nrf24.h"
 #include "MPU6050.h"
 #include "BH1750.h"
+//#include "MadgwickAHRS.h"
 
 volatile uint8_t stopRX = 0; //Logic variable to indicate the stopping of the RX
 
 int main(void)
 {
 	uint8_t nRF24_payload[32]; //Buffer to store a payload of maximum width	
-		
-	int16_t accelgyro[6];
-	int16_t tempRead = 0;
+	
+	//Variables used to keep the time, which is necessary for the quaternion update
+	//uint16_t timeCountCur = 0;
+	//uint16_t timeCountPrev = 0;
 	
 	double bright = 0.0; //Save the brightness received
+	float acgrData[6]; //Save the data of the sensors
+	float gyrCal[3]; //Save the calibration values
+	//float sampFreq = 0.0; //Update time for integration used in quatenion
+	
+	//float yaw = 0.0, pitch = 0.0, roll = 0.0;
 	
 	uint8_t payload_length; //Length of received payload
 	char* tokenCh = NULL; //Save the tokenized string
 	
-	//LED Init
+	//LED Pins Init
 	RCC->APB2ENR |= RCC_APB2ENR_IOPBEN; //Enabling the clock of C pins.
 	GPIOB->CRH |= GPIO_CRH_MODE8|GPIO_CRH_MODE9; //Resetting the bits of the register besides the last 4.
 	
 	//Timer Initialization
 	//TODO make the timer for 50ms
 	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN; //Enable Timer 3 clock
+	//RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
 	TIM3->PSC = 18000; //Set prescaler to 18000 (ticks)
-	TIM3->ARR = 300; //Set auto reload to aprrox. 50 (ms)
+	//TIM4->PSC = 18000;
+	TIM3->ARR = 150; //Set auto reload to aprrox. 75 (ms)
+	//TIM4->ARR = 250; //Around 500ms
 
 	NVIC_EnableIRQ(TIM3_IRQn); //Enable Timer 3 interrupt
 	TIM3->DIER = TIM_DIER_UIE; //Enable Timer 3 interrupt
 	
-	UART_Init(115200);
-	Delay_Init();
+	UART_Init(115200); //Initialize the UART with the set baud rate
+	Delay_Init(); //Initialize the delay
 		
 	MPU6050_I2C_Init(); //Initialize I2C
-	MPU6050_Initialize(); //Initialize the MPU
-	MPU6050_SetFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-	MPU6050_SetFullScaleAccelRange(MPU6050_ACCEL_FS_2);
+	MPU6050_Initialize(); //Initialize the MPU6050
+	MPU6050_GyroCalib(gyrCal); //Get the gyroscope calibration values
+	MPU6050_SetFullScaleGyroRange(MPU6050_GYRO_FS_2000); //Set the gyroscope scale to full scale
+	MPU6050_SetFullScaleAccelRange(MPU6050_ACCEL_FS_2); //Set the accelerometer scale
 	
 	BH1750_Init(BH1750_CONTHRES); //I2C is already initialized above
 		
-	nRF24_GPIO_Init();
+	nRF24_GPIO_Init(); //Start the pins used by the NRF24
 	nRF24_Init(); //Initialize the nRF24L01 to its default state
 	
 	nRF24_CE_L(); //RX/TX disabled
-
+	
+	//A small check for debugging
 	UART_SendStr("nRF24L01+ check: ");
 	if (!nRF24_Check()) 
 	{
@@ -57,9 +70,7 @@ int main(void)
 		while (1);
 	}
 	else
-	{
-		UART_SendStr("OK\r\n");
-	}
+	{UART_SendStr("OK\r\n");}
 	
 	// This is simple transmitter with Enhanced ShockBurst (to one logic address):
 	//   - TX address: 'ESB'
@@ -91,34 +102,55 @@ int main(void)
 	nRF24_SetPowerMode(nRF24_PWR_UP); //Wake the transceiver
 	
 	Delay_ms(100); //Let some time to set things up
+	//TIM4->CR1 = TIM_CR1_CEN; //Enable TIM4 timer
 	
 	while (1)
 	{
-		MPU6050_GetRawAccelGyro(accelgyro, tempRead);
-		//tempRead = ((tempRead + 12412.0)/340.0)*100.0;
+		MPU6050_GetCalibAccelGyro(acgrData, gyrCal); //Get the accelerometer and gyroscope data
+		
+		/*timeCountCur = TIM4->CNT; //Get the timer count
+		sampFreq = (float)(1.0/((timeCountCur - timeCountPrev)*0.0005)); //Get the past time from the previous run
+		timeCountPrev = timeCountCur; //Save the value of the previous count
+		TIM4->CNT = 0x0000; //Reset the timer*/
+		
+		///MadgwickAHRSupdateIMU(acgrData[3], acgrData[4], acgrData[5], acgrData[0], acgrData[1], acgrData[2], sampFreq);
 		bright = BH1750_GetBrightnessCont();
 		
+		/*yaw = atan2f(2.0*(q0*q3 + q1*q2), 1 - 2*(q2*q2 + q3*q3));
+		roll = atan2f(2.0*(q0*q1 + q2*q3), 1 - 2*(q1*q1 + q2*q2));
+		pitch = asin(2.0*(q0*q2 - q3*q1));*/
+		
+		//yaw += 4.66; //Compensate for magnetic declination
+		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "A%.2f", bright);
+		sprintf((char *)nRF24_payload, "B%.2f", bright);
+		nRF24_TransmitPacket(nRF24_payload, 32);
+		
+		/*memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+		sprintf((char *)nRF24_payload, "B%.2f %.2f %.2f %.2f", q0, q1, q2, q3);
+		nRF24_TransmitPacket(nRF24_payload, 32);*/
+		
+		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+		sprintf((char *)nRF24_payload, "X%d %d", (int16_t)(acgrData[0]*10000.0), (int16_t)(acgrData[3]*10000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
 		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "B%d %d %d", accelgyro[0], accelgyro[1], accelgyro[2]);
+		sprintf((char *)nRF24_payload, "Y%d %d", (int16_t)(acgrData[1]*10000.0), (int16_t)(acgrData[4]*10000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
 		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "C%d %d %d", accelgyro[3], accelgyro[4], accelgyro[5]);
+		sprintf((char *)nRF24_payload, "Z%d %d", (int16_t)(acgrData[2]*10000.0), (int16_t)(acgrData[5]*10000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
-				
+		
+		//Start receiving and do that until time limit has been reched
 		nRF24_SetOperationalMode(nRF24_MODE_RX); //Set operational mode (PRX == receiver)
 		nRF24_CE_H(); //Put the transceiver to the RX mode
 		TIM3->CR1 = TIM_CR1_CEN; //Start the timer
+		
 		while(!stopRX)
 		{
 			if (nRF24_GetStatus_RXFIFO() != nRF24_STATUS_RXFIFO_EMPTY)
 			{
-				TIM3->CR1 = 0x0; //Stop the timer
-				stopRX = 0; //Reset the stop condition
 				nRF24_ReadPayload(nRF24_payload, &payload_length); //Get the payload from the transceiver
 				nRF24_ClearIRQFlags(); //Clear all pending IRQ flags
 
@@ -137,40 +169,13 @@ int main(void)
 						GPIOB->ODR |= GPIO_BSRR_BS9;
 					}
 				}
-				/*else if(strstr(tokenCh, "L2"))
-				{
-					tokenCh = strtok (NULL, ":");
-					if(*tokenCh)
-					{GPIOB->ODR |= GPIO_BSRR_BS5;}
-					else
-					{GPIOB->ODR &= ~GPIO_BSRR_BS5;}
-				}
-				else if(strstr(tokenCh, "L3"))
-				{
-					tokenCh = strtok (NULL, ":");
-					if(*tokenCh)
-					{GPIOB->ODR |= GPIO_BSRR_BS8;}
-					else
-					{GPIOB->ODR &= ~GPIO_BSRR_BS8;}
-				}
-				else if(strstr(tokenCh, "L4"))
-				{
-					tokenCh = strtok (NULL, ":");
-					if(*tokenCh)
-					{GPIOB->ODR |= GPIO_BSRR_BS9;}
-					else
-					{GPIOB->ODR &= ~GPIO_BSRR_BS9;}
-				}*/
-				
-				break;
 			}
 		}
-		TIM3->CR1 = 0x0; //Stop the timer
 		stopRX = 0; //Reset the stop condition
 		nRF24_SetOperationalMode(nRF24_MODE_TX); //Set operational mode (PTX == transmitter)
 		nRF24_ClearIRQFlags(); //Clear any pending IRQ flags
 				
-		//Delay_ms(25);
+		Delay_ms(5);
 	}
 }
 
@@ -179,6 +184,7 @@ void TIM3_IRQHandler()
 	if (TIM3->SR & TIM_SR_UIF) 
 	{
 		TIM3->SR &= ~TIM_SR_UIF;
+		TIM3->CR1 = 0x00; //Stop the timer
 		stopRX = 1; //Indicate that we have to stop
 	}
 }
