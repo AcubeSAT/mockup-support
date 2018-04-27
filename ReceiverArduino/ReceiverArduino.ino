@@ -32,6 +32,7 @@ uint8_t nRF24_payload[32];
 uint8_t ledStat = 0;
 
 volatile int values[9];
+volatile float ax = 0.0, ay = 0.0, az = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
 
 void setup() 
 {
@@ -128,36 +129,41 @@ void loop()
       int v1,v2,v3;
       switch (r_data[0]) {
         // Always ignore the first ID character
-        case 'A':
+        case 'B':
           // Various data
           sscanf(r_data + 1, "%d", &(values[6]));
           // Process brightness with gamma
           values[6] = BRIGHTNESS_MAX*pow(values[6]/32387.0,1);
           if(values[6] < 0) values[6] = BRIGHTNESS_MAX;
           break;
-        case 'B':
-          // Acceleration data
-          sscanf(r_data + 1, "%d %d %d", &v1, &v2, &v3);
-          values[0] = v1; values[1] = v2; values[2] = v3;
+        case 'X':
+          // X axis data
+          sscanf(r_data + 1, "%d %d", &v1, &v2);
+          ax = v1/10000.0; gx = v2/10000.0;
           break;
-        case 'C':
-          // Gyroscope data
-          sscanf(r_data + 1, "%d %d %d", &v1, &v2, &v3);
-          values[3] = v1; values[4] = v2; values[5] = v3;
+        case 'Y':
+          // Y axis data
+          sscanf(r_data + 1, "%d %d", &v1, &v2);
+          ay = v1/10000.0; gy = v2/10000.0;
+          break;
+       case 'Z':
+          // Z axis data
+          sscanf(r_data + 1, "%d %d", &v1, &v2);
+          az = v1/10000.0; gz = v2/10000.0;
           break;
       }
 
-      Serial.print(values[0]);
+      Serial.print(ax);
       Serial.print(' ');
-      Serial.print( values[1] );
+      Serial.print(ay);
       Serial.print(' ');
-      Serial.print(values[2]);
+      Serial.print(az);
       Serial.print(' ');
-      Serial.print(values[3]);
+      Serial.print(gx);
       Serial.print(' ');
-      Serial.print(values[4]);
+      Serial.print(gy);
       Serial.print(' ');
-      Serial.print(values[5]);
+      Serial.print(gz);
       Serial.print(' ');
       Serial.print(values[6]);
       Serial.print(' ');
@@ -165,7 +171,7 @@ void loop()
       Serial.print(' ');
       Serial.print(values[8]);
       Serial.print(' ');
-      Serial.print("\n");
+      Serial.print("\r\n");
       //Serial.println(""); //Print a new line to have a clearer output
       //Serial.print("Received brightness: ");
       //Serial.println(values[6]);
