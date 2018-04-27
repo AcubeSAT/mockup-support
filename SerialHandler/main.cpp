@@ -17,7 +17,8 @@
 #include <stdio.h>
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
-
+#include "MadgwickAHRS/MadgwickAHRS.h"
+#include <math.h>
 #include <zmq.hpp>
 
 // The number of points to include in the graph
@@ -28,7 +29,7 @@ const int update_ms = 1000;
 const int update_zmq_ms = 50;
 
 const int MAX_CALIBRATION_VALUES = 80;
-const float gyro_normalizer_factor = 1.0f / 3268.0f * 0.5f;
+const float gyro_normalizer_factor = 57.3f / 7.0f;
 
 static void error_callback(int error, const char *description) {
     fprintf(stderr, "Error %d: %s\n", error, description);
@@ -64,12 +65,19 @@ zmq::socket_t publisher(context, ZMQ_PUB);
 
 float varAngx = 0, varAngy = 0, varAngz = 0;
 
+float dataToShow[6];
+
 void resetCalibration() {
     varAngx = varAngy = varAngz = 0;
 
     calibrated = false;
     calibrationValues = -10; // don't include first 10 values
     calibration = {0,0,0};
+
+     q0 = 1.0f;
+     q1 = 0.0f;
+     q2 = 0.0f;
+     q3 = 0.0f;
 }
 
 void sqlStorage() {
@@ -179,6 +187,13 @@ void dataAcquisition() {
                     iss = std::istringstream(line);
                     iss >> valAccx >> valAccy >> valAccz >> valGyrox >> valGyroy >> valGyroz >> valBright;// >> valSignal;
                     dataReceived = true;
+                    dataToShow[0] = valAccx;
+                    dataToShow[1] = valAccy;
+                    dataToShow[2] = valAccz;
+                    dataToShow[3] = valGyrox;
+                    dataToShow[4] = valGyroy;
+                    dataToShow[5] = valGyroz;
+
 
 //                    float norm = sqrtf(powf(valMagx, 2) + powf(valMagy, 2) + powf(valMagz, 2));
 
@@ -222,20 +237,29 @@ void dataAcquisition() {
                             calibrated = true;
                         }
                     }
-                    valGyrox = valGyrox - calibration[0];
-                    valGyroy = valGyroy - calibration[1];
-                    valGyroz = valGyroz - calibration[2];
+                    //valGyrox = valGyrox - calibration[0];
+                    //valGyroy = valGyroy - calibration[1];
+                    //valGyroz = valGyroz - calibration[2];
 
                     if (calibrated) {
-                        if (fabs(valGyrox * gyro_normalizer_factor) > 0.025){
-                            varAngx += valGyrox * gyro_normalizer_factor;
-                        }
-                        if (fabs(valGyroy * gyro_normalizer_factor) > 0.025){
-                            varAngy += valGyroy * gyro_normalizer_factor;
-                        }
-                        if (fabs(valGyroz * gyro_normalizer_factor) > 0.005){
-                            varAngz += valGyroz * gyro_normalizer_factor;
-                        }
+                        MadgwickAHRSupdateIMU(valGyrox, valGyroy, valGyroz, valAccx, valAccy, valAccz);
+//                         if (fabs(valGyrox * gyro_normalizer_factor) > 0.025){
+//                             varAngx += valGyrox * gyro_normalizer_factor;
+//                         }
+//                         if (fabs(valGyroy * gyro_normalizer_factor) > 0.025){
+//                             varAngy += valGyroy * gyro_normalizer_factor;
+//                         }
+//                         if (fabs(valGyroz * gyro_normalizer_factor) > 0.005){
+//                             varAngz += valGyroz * gyro_normalizer_factor;
+//                         }
+
+                        varAngx = atan2f(2*(q0*q1+q2*q3),1-2*(q1*q1+q2*q2));
+                        varAngy = asinf(2*(q0*q2-q3*q1));
+                        varAngz = atan2f(2*(q0*q3+q1*q2),1-2*(q2*q2+q3*q3));
+
+                        varAngx *= gyro_normalizer_factor;
+                        varAngy *= gyro_normalizer_factor;
+                        varAngz *= gyro_normalizer_factor;
                     }
 		    int factorX, factorY, factorZ;
                     factorX = factorY = factorZ = 1;
@@ -283,7 +307,6 @@ void dataAcquisition() {
         std::cerr << "Unable to open interface " << port << ": " << e.what();
     }
 }
-
 
 
 int main() {
@@ -409,10 +432,17 @@ int main() {
         }
         if (ImGui::Button("Reset Position")) {
             varAngx = varAngy = varAngz = 0;
+            q0 = 1.0f;
+            q1 = 0.0f;
+            q2 = 0.0f;
+            q3 = 0.0f;
         }
-        ImGui::Text("Received values: %d", calibrationValues);
-        ImGui::Text("X: %f, Y: %f, Z: %f", calibration[0], calibration[1], calibration[2]);
+        ImGui::Text("Processed values: %d", calibrationValues);
         ImGui::Text("aX: %f, aY: %f, aZ: %f", varAngx, varAngy, varAngz);
+        ImGui::Text("cX: %f, cY: %f, cZ: %f", calibration[0], calibration[1], calibration[2]);
+        ImGui::Text("Raw values");
+        ImGui::Text("ACCEL X: %f, Y: %f, Z: %f", dataToShow[0],dataToShow[1],dataToShow[2]);
+        ImGui::Text("GYRO  X: %f, Y: %f, Z: %f", dataToShow[3],dataToShow[4],dataToShow[5]);
         ImGui::End();
 
         ImGui::Begin("Commands to Unity 3D-Model");
