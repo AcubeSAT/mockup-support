@@ -216,7 +216,7 @@ void MPU6050_SetSleepModeStatus(FunctionalState NewState)
  * @param AccelGyro 16-bit signed integer array of length 6
  * @see MPU6050_RA_ACCEL_XOUT_H
  */
-void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper)
+void MPU6050_GetRawAccelGyro(s16* AccelGyro)
 {
 	u8 tmpBuffer[14];
 	MPU6050_I2C_BufferRead(MPU6050_DEFAULT_ADDRESS, tmpBuffer, MPU6050_RA_ACCEL_XOUT_H, 14);
@@ -226,10 +226,9 @@ void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper)
 	/* Get Angular rate */
 	for (int i = 4; i < 7; i++)
 			AccelGyro[i - 1] = ((s16) ((u16) tmpBuffer[2 * i] << 8) + tmpBuffer[2 * i + 1]);
-	Temper = (((s16)tmpBuffer[6]) << 8)|((s16)tmpBuffer[7]);
 }
 
-/*void MPU6050_GetCalibAccelGyro(double* AccelGyro)
+void MPU6050_GetCalibAccelGyro(float* AccelGyro, float* gyrCal)
 {
 	int16_t data[6];
 	uint8_t scale = 0; //Save the current scale, as read from the register
@@ -254,9 +253,9 @@ void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper)
 			multFactor = 1.0/2048.0;
 			break;
 	}
-	AccelGyro[0] = (double)data[0]*multFactor;
-	AccelGyro[1] = (double)data[1]*multFactor;
-	AccelGyro[2] = (double)data[2]*multFactor;
+	AccelGyro[0] = (float)data[0]*multFactor;
+	AccelGyro[1] = (float)data[1]*multFactor;
+	AccelGyro[2] = (float)data[2]*multFactor;
 	
 	scale = MPU6050_GetFullScaleGyroRange(); //Get the current reading scale
 	
@@ -276,42 +275,42 @@ void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper)
 			multFactor = 1.0/16.4;
 			break;
 	}
-	AccelGyro[3] = (double)data[3]*multFactor;
-	AccelGyro[4] = (double)data[4]*multFactor;
-	AccelGyro[5] = (double)data[5]*multFactor;
-}*/
+	AccelGyro[3] = ((float)(data[3]*multFactor) + gyrCal[0])*0.0174533; //Return in rad/s
+	AccelGyro[4] = ((float)(data[4]*multFactor) + gyrCal[1])*0.0174533; //Return in rad/s
+	AccelGyro[5] = ((float)(data[5]*multFactor) + gyrCal[2])*0.0174533; //Return in rad/s
+}
 
 /** Calculate the calibration values for the offset of the gyroscope.
  * Make sure the the delay is intialized before this library and also if you want a different gyro scale
  * set it after calling this function.
  * @param gyroCalib a pointer to return the calibration data
  */
-/*void MPU6050_GyroCalib(float *gyroCalib)
+void MPU6050_GyroCalib(float *gyroCalib)
 {
-	uint16_t gyrosensitivity  = 131;   //Gyro scale 131 LSB/degrees/sec
-	
-	int16_t data[6]; //Data array to hold accelerometer and gyro x, y, z, data
-	int32_t gyro_bias[3]  = {0, 0, 0};
-	uint16_t numSamp = 50;
-	
-	MPU6050_SetFullScaleGyroRange(MPU6050_GYRO_FS_250);
-		
-	for(int i = 0; i < numSamp; i++)
-	{
-		MPU6050_GetRawAccelGyro(data);
-		gyro_bias[0] += (int32_t)data[3];
-		gyro_bias[1] += (int32_t)data[4];
-		gyro_bias[2] += (int32_t)data[5];
-		Delay_ms(10);
-	}
-	gyro_bias[0] /= -1.0*numSamp;
-	gyro_bias[1] /= -1.0*numSamp;
-	gyro_bias[2] /= -1.0*numSamp;
-	
-	gyroCalib[0] = (float) gyro_bias[0]/(float) gyrosensitivity;
-  gyroCalib[1] = (float) gyro_bias[1]/(float) gyrosensitivity;
-  gyroCalib[2] = (float) gyro_bias[2]/(float) gyrosensitivity;
-}*/
+    uint16_t gyrosensitivity  = 131;   //Gyro scale 131 LSB/degrees/sec
+
+    int16_t data[6]; //Data array to hold accelerometer and gyro x, y, z, data
+    int32_t gyro_bias[3]  = {0, 0, 0};
+    uint16_t numSamp = 50;
+
+    MPU6050_SetFullScaleGyroRange(MPU6050_GYRO_FS_250);
+        
+    for(int i = 0; i < numSamp; i++)
+    {
+        MPU6050_GetRawAccelGyro(data);
+        gyro_bias[0] += (int32_t)data[3];
+        gyro_bias[1] += (int32_t)data[4];
+        gyro_bias[2] += (int32_t)data[5];
+        Delay_ms(10);
+    }
+    gyro_bias[0] /= -1.0*numSamp;
+    gyro_bias[1] /= -1.0*numSamp;
+    gyro_bias[2] /= -1.0*numSamp;
+
+    gyroCalib[0] = (float) gyro_bias[0]/(float) gyrosensitivity;
+    gyroCalib[1] = (float) gyro_bias[1]/(float) gyrosensitivity;
+    gyroCalib[2] = (float) gyro_bias[2]/(float) gyrosensitivity;
+}
 
 /** Write multiple bits in an 8-bit device register.
  * @param slaveAddr I2C slave device address

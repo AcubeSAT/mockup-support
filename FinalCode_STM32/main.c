@@ -131,15 +131,15 @@ int main(void)
 		nRF24_TransmitPacket(nRF24_payload, 32);*/
 		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "X%d %d", (int16_t)(acgrData[0]*10000.0), (int16_t)(acgrData[3]*10000.0));
+		sprintf((char *)nRF24_payload, "X%d %d", (int32_t)(acgrData[0]*100000.0), (int32_t)(acgrData[3]*100000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
 		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "Y%d %d", (int16_t)(acgrData[1]*10000.0), (int16_t)(acgrData[4]*10000.0));
+		sprintf((char *)nRF24_payload, "Y%d %d", (int32_t)(acgrData[1]*100000.0), (int32_t)(acgrData[4]*100000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
 		
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
-		sprintf((char *)nRF24_payload, "Z%d %d", (int16_t)(acgrData[2]*10000.0), (int16_t)(acgrData[5]*10000.0));
+		sprintf((char *)nRF24_payload, "Z%d %d", (int32_t)(acgrData[2]*100000.0), (int32_t)(acgrData[5]*100000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
 		
 		//Start receiving and do that until time limit has been reched

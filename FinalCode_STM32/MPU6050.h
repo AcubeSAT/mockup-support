@@ -409,8 +409,8 @@ void MPU6050_SetClockSource(uint8_t source);
 // WHO_AM_I register
 uint8_t MPU6050_GetDeviceID(void);
 
-void MPU6050_GetRawAccelGyro(s16* AccelGyro, s16 Temper);
-void MPU6050_GetCalibAccelGyro(double* AccelGyro);
+void MPU6050_GetRawAccelGyro(s16* AccelGyro);
+void MPU6050_GetCalibAccelGyro(float* AccelGyro, float* gyrCal);
 void MPU6050_GyroCalib(float *gyroCalib);
 
 void MPU6050_WriteBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t data);

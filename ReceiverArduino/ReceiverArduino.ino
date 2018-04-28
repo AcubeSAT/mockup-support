@@ -34,6 +34,8 @@ uint8_t ledStat = 0;
 volatile int values[9];
 volatile float ax = 0.0, ay = 0.0, az = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
 
+long v1 = 0L,v2 = 0L,v3 = 0L;
+
 void setup() 
 {
   Serial.begin(115200); //Initialize the USART to 115200 baud
@@ -126,7 +128,6 @@ void loop()
       {Serial.print((char)r_data[i++]);
       } //Print each character*/
 
-      int v1,v2,v3;
       switch (r_data[0]) {
         // Always ignore the first ID character
         case 'B':
@@ -138,18 +139,18 @@ void loop()
           break;
         case 'X':
           // X axis data
-          sscanf(r_data + 1, "%d %d", &v1, &v2);
-          ax = v1/10000.0; gx = v2/10000.0;
+          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+          ax = v1/100000.0; gx = v2/100000.0;
           break;
         case 'Y':
           // Y axis data
-          sscanf(r_data + 1, "%d %d", &v1, &v2);
-          ay = v1/10000.0; gy = v2/10000.0;
+          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+          ay = v1/100000.0; gy = v2/100000.0;
           break;
        case 'Z':
           // Z axis data
-          sscanf(r_data + 1, "%d %d", &v1, &v2);
-          az = v1/10000.0; gz = v2/10000.0;
+          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+          az = v1/100000.0; gz = v2/100000.0;
           break;
       }
 
