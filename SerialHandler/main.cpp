@@ -45,6 +45,7 @@ bool dataSentDB = false;
 bool dataSendingZMQ = false;
 bool dataSentZMQ = false;
 bool zmqEnabled = true;
+bool noiseGateEnabled = true;
 char pendingCommand = 0;
 
 bool flipX = true;
@@ -242,6 +243,12 @@ void dataAcquisition() {
                     //valGyroz = valGyroz - calibration[2];
 
                     if (calibrated) {
+                        if (noiseGateEnabled) {
+                          if (fabs(valGyrox) < 0.025) valGyrox = 0;
+                          if (fabs(valGyroy) < 0.025) valGyroy = 0;
+                          if (fabs(valGyroz) < 0.025) valGyroz = 0;
+                        }
+
                         MadgwickAHRSupdateIMU(valGyrox, valGyroy, valGyroz, valAccx, valAccy, valAccz);
 //                         if (fabs(valGyrox * gyro_normalizer_factor) > 0.025){
 //                             varAngx += valGyrox * gyro_normalizer_factor;
@@ -443,6 +450,9 @@ int main() {
         ImGui::Text("Raw values");
         ImGui::Text("ACCEL X: %f, Y: %f, Z: %f", dataToShow[0],dataToShow[1],dataToShow[2]);
         ImGui::Text("GYRO  X: %f, Y: %f, Z: %f", dataToShow[3],dataToShow[4],dataToShow[5]);
+
+        ImGui::Checkbox("Enable Noise Gate", &noiseGateEnabled);
+
         ImGui::End();
 
         ImGui::Begin("Commands to Unity 3D-Model");
