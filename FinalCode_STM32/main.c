@@ -31,8 +31,9 @@ int main(void)
 	char* tokenCh = NULL; //Save the tokenized string
 	
 	//LED Pins Init
-	RCC->APB2ENR |= RCC_APB2ENR_IOPBEN; //Enabling the clock of C pins.
+	RCC->APB2ENR |= RCC_APB2ENR_IOPBEN | RCC_APB2ENR_IOPCEN; //Enabling the clock of C pins.
 	GPIOB->CRH |= GPIO_CRH_MODE8|GPIO_CRH_MODE9; //Resetting the bits of the register besides the last 4.
+	GPIOC->CRH |= GPIO_CRH_MODE13; // Set the built-in LED
 	
 	//Timer Initialization
 	//TODO make the timer for 50ms
@@ -106,6 +107,8 @@ int main(void)
 	
 	while (1)
 	{
+		GPIOC->BSRR = GPIO_Pin_13; // Enable the transmission LED
+
 		MPU6050_GetCalibAccelGyro(acgrData, gyrCal); //Get the accelerometer and gyroscope data
 		
 		/*timeCountCur = TIM4->CNT; //Get the timer count
@@ -137,7 +140,7 @@ int main(void)
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
 		sprintf((char *)nRF24_payload, "Y%d %d", (int32_t)(acgrData[1]*100000.0), (int32_t)(acgrData[4]*100000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
-		
+
 		memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
 		sprintf((char *)nRF24_payload, "Z%d %d", (int32_t)(acgrData[2]*100000.0), (int32_t)(acgrData[5]*100000.0));
 		nRF24_TransmitPacket(nRF24_payload, 32);
@@ -175,6 +178,7 @@ int main(void)
 		nRF24_SetOperationalMode(nRF24_MODE_TX); //Set operational mode (PTX == transmitter)
 		nRF24_ClearIRQFlags(); //Clear any pending IRQ flags
 				
+		GPIOC->BRR = GPIO_Pin_13; // Disable the transmission LED
 		Delay_ms(5);
 	}
 }
