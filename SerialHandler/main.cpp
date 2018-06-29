@@ -47,6 +47,7 @@ bool dataSentZMQ = false;
 bool zmqEnabled = true;
 bool noiseGateEnabled = true;
 std::array<bool, 3> noiseGateActivated;
+bool manualCalibrationEnabled = true;
 char pendingCommand = 0;
 
 bool flipX = true;
@@ -242,9 +243,12 @@ void dataAcquisition() {
                             calibrated = true;
                         }
                     }
-                    valGyrox = valGyrox - calibration[0];
-                    valGyroy = valGyroy - calibration[1];
-                    valGyroz = valGyroz - calibration[2];
+                    
+                    if (manualCalibrationEnabled) {
+                        valGyrox = valGyrox - calibration[0];
+                        valGyroy = valGyroy - calibration[1];
+                        valGyroz = valGyroz - calibration[2];
+                    }
 
                     if (calibrated) {
                         if (noiseGateEnabled) {
@@ -456,6 +460,8 @@ int main() {
         ImGui::Text("ACCEL X: %f, Y: %f, Z: %f", dataToShow[0],dataToShow[1],dataToShow[2]);
         ImGui::Text("GYRO  X: %f, Y: %f, Z: %f", dataToShow[3],dataToShow[4],dataToShow[5]);
 
+        ImGui::Checkbox("Enable Manual Calibration", &manualCalibrationEnabled);
+        
         ImGui::Checkbox("Enable Noise Gate", &noiseGateEnabled);
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));

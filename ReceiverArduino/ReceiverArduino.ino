@@ -25,7 +25,7 @@ RF24 radio(9,10); //Make the radio object from the RF24 class and assign CE to P
 
 uint8_t address[6] = "SesaB"; //Address of the dongles (For some reason the address is saved in reverse order)
 uint8_t address_tx[6] = "SebuC"; //Address of the receiving end
-uint8_t r_data[32] = ""; //Save the received data
+uint8_t r_data[64] = ""; //Save the received data
 uint8_t i = 0; //Indexing variable used in printing out the received data
 
 uint8_t nRF24_payload[32];
@@ -154,17 +154,17 @@ void loop()
           break;
       }
 
-      Serial.print(ax);
+      Serial.print(ax, 5);
       Serial.print(' ');
-      Serial.print(ay);
+      Serial.print(ay, 5);
       Serial.print(' ');
-      Serial.print(az);
+      Serial.print(az, 5);
       Serial.print(' ');
-      Serial.print(gx);
+      Serial.print(gx, 5);
       Serial.print(' ');
-      Serial.print(gy);
+      Serial.print(gy, 5);
       Serial.print(' ');
-      Serial.print(gz);
+      Serial.print(gz, 5);
       Serial.print(' ');
       Serial.print(values[6]);
       Serial.print(' ');
