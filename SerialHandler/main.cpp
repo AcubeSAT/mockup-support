@@ -46,13 +46,14 @@ bool dataSendingZMQ = false;
 bool dataSentZMQ = false;
 bool zmqEnabled = true;
 bool noiseGateEnabled = true;
+std::array<bool, 3> noiseGateActivated;
 char pendingCommand = 0;
 
 bool flipX = true;
 bool flipY = false;
 bool flipZ = true;
 
-std::array<float, 3> calibration;
+std::array<float, 6> calibration;
 bool calibrated = false;
 int calibrationValues;
 
@@ -73,7 +74,7 @@ void resetCalibration() {
 
     calibrated = false;
     calibrationValues = -10; // don't include first 10 values
-    calibration = {0,0,0};
+    calibration = {0,0,0,0,0,0};
 
      q0 = 1.0f;
      q1 = 0.0f;
@@ -231,6 +232,9 @@ void dataAcquisition() {
                             calibration[0] += valGyrox / (float) MAX_CALIBRATION_VALUES;
                             calibration[1] += valGyroy / (float) MAX_CALIBRATION_VALUES;
                             calibration[2] += valGyroz / (float) MAX_CALIBRATION_VALUES;
+                            calibration[3] += valAccx / (float) MAX_CALIBRATION_VALUES;
+                            calibration[4] += valAccy / (float) MAX_CALIBRATION_VALUES;
+                            calibration[5] += valAccz / (float) MAX_CALIBRATION_VALUES;
                         }
 
                         calibrationValues++;
@@ -238,15 +242,15 @@ void dataAcquisition() {
                             calibrated = true;
                         }
                     }
-                    //valGyrox = valGyrox - calibration[0];
-                    //valGyroy = valGyroy - calibration[1];
-                    //valGyroz = valGyroz - calibration[2];
+                    valGyrox = valGyrox - calibration[0];
+                    valGyroy = valGyroy - calibration[1];
+                    valGyroz = valGyroz - calibration[2];
 
                     if (calibrated) {
                         if (noiseGateEnabled) {
-                          if (fabs(valGyrox) < 0.025) valGyrox = 0;
-                          if (fabs(valGyroy) < 0.025) valGyroy = 0;
-                          if (fabs(valGyroz) < 0.025) valGyroz = 0;
+                          if (fabs(valGyrox) < 0.100) { valGyrox /= 10.0; noiseGateActivated[0] = true; }
+                          if (fabs(valGyroy) < 0.100) { valGyroy /= 10.0; noiseGateActivated[1] = true; }
+                          if (fabs(valGyroz) < 0.100) { valGyroz /= 10.0; noiseGateActivated[2] = true; }
                         }
 
                         MadgwickAHRSupdateIMU(valGyrox, valGyroy, valGyroz, valAccx, valAccy, valAccz);
@@ -411,6 +415,7 @@ int main() {
         if (dataSentZMQ) dataSendingZMQ = false;
         dataSentDB = false;
         dataSentZMQ = false;
+        noiseGateActivated = {false, false, false};
 
         /*
         glBegin(GL_LINE_LOOP);//start drawing a line loop
@@ -452,6 +457,12 @@ int main() {
         ImGui::Text("GYRO  X: %f, Y: %f, Z: %f", dataToShow[3],dataToShow[4],dataToShow[5]);
 
         ImGui::Checkbox("Enable Noise Gate", &noiseGateEnabled);
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
+        ImGui::Checkbox("",       &(noiseGateActivated[0])); ImGui::SameLine();
+        ImGui::Checkbox("",       &(noiseGateActivated[1])); ImGui::SameLine();
+        ImGui::Checkbox("active", &(noiseGateActivated[2])); ImGui::SameLine();
+        ImGui::PopStyleColor();
 
         ImGui::End();
 
