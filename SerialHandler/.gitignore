@@ -2,3 +2,11 @@ build
 .idea
 cmake-build-debug
 config
+Makefile
+/SerialHandler
+/LinuxReceiver
+/ZMQTestReceiver
+CMakeCache.txt
+CMakeFiles
+*.a
+/imgui.ini
