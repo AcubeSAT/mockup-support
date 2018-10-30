@@ -35,6 +35,16 @@ static void error_callback(int error, const char *description) {
     fprintf(stderr, "Error %d: %s\n", error, description);
 }
 
+// FreeRTOS defines
+enum eTaskState {
+    eRunning = 0,	/* A task is querying the state of itself, so must be running. */
+	eReady,			/* The task being queried is in a read or pending ready list. */
+	eBlocked,		/* The task being queried is in the Blocked state. */
+	eSuspended,		/* The task being queried is in the Suspended state, or is in the Blocked state with an infinite time out. */
+	eDeleted,		/* The task being queried has been deleted, but its TCB has not yet been freed. */
+	eInvalid
+ };
+
 // Interthread variables
 float magneticData[GRAPH_SIZE] = {0};
 bool stop = false;
@@ -243,7 +253,7 @@ void dataAcquisition() {
                             calibrated = true;
                         }
                     }
-                    
+
                     if (manualCalibrationEnabled) {
                         valGyrox = valGyrox - calibration[0];
                         valGyroy = valGyroy - calibration[1];
@@ -373,7 +383,7 @@ int main() {
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 
-    bool show_test_window = false;
+    bool show_test_window = true;
     ImVec4 clear_color = ImColor(35, 44, 59);
 
 
@@ -438,11 +448,11 @@ int main() {
 
         ImGui::Begin("Calibration Status");
         ImGui::Text("Status: %s", (calibrated) ? "ready" : "calibrating");
-	ImGui::Checkbox("Flip X", &flipX);
-	ImGui::SameLine();
-	ImGui::Checkbox("Flip Y", &flipY);
-	ImGui::SameLine();
-	ImGui::Checkbox("Flip Z", &flipZ);
+        ImGui::Checkbox("Flip X", &flipX);
+        ImGui::SameLine();
+        ImGui::Checkbox("Flip Y", &flipY);
+        ImGui::SameLine();
+        ImGui::Checkbox("Flip Z", &flipZ);
         if (ImGui::Button("Recalibrate")) {
             resetCalibration();
         }
@@ -461,7 +471,7 @@ int main() {
         ImGui::Text("GYRO  X: %f, Y: %f, Z: %f", dataToShow[3],dataToShow[4],dataToShow[5]);
 
         ImGui::Checkbox("Enable Manual Calibration", &manualCalibrationEnabled);
-        
+
         ImGui::Checkbox("Enable Noise Gate", &noiseGateEnabled);
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
@@ -514,6 +524,77 @@ int main() {
         if (ImGui::Button("Reset")) {
             pendingCommand = 'r';
         }
+        ImGui::End();
+
+        ImGui::Begin("Task List");
+
+        ImGui::Text("FreeRTOS Task List:");
+        ImGui::Columns(4, "tasks"); // 4-ways, with border
+        ImGui::Separator();
+        ImGui::Text("ID"); ImGui::NextColumn();
+        ImGui::Text("Name"); ImGui::NextColumn();
+        ImGui::Text("%% CPU"); ImGui::NextColumn();
+        ImGui::Text("State"); ImGui::NextColumn();
+        ImGui::Separator();
+        static int selected = -1;
+
+        srand(time(NULL));
+
+        for (int i = 0; i < 6; i++)
+        {
+            char label[32];
+            sprintf(label, "%02d", i);
+            if (ImGui::Selectable(label, selected == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selected = i;
+            }
+            bool hovered = ImGui::IsItemHovered();
+            ImGui::NextColumn();
+            ImGui::Text("FreeRTOS_Task"); ImGui::NextColumn();
+
+            float progress = (rand() % 100) / 100.0f;
+            ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
+            ImGui::NextColumn();
+
+            float hue;
+            std::string taskDescription;
+            eTaskState taskState = (eTaskState) (rand() % 6);
+
+            switch(taskState) {
+                case eRunning:
+                    hue = 0.286f;
+                    taskDescription = "RUNNING";
+                    break;
+                case eReady:
+                    hue = 0.214f;
+                    taskDescription = "READY";
+                    break;
+                case eBlocked:
+                    hue = 0.136f;
+                    taskDescription = "BLOCKED";
+                    break;
+                case eSuspended:
+                    hue = 0.025f;
+                    taskDescription = "SUSPENDED";
+                    break;
+                case eDeleted:
+                    hue = 0.819f;
+                    taskDescription = "DELETED";
+                    break;
+                default:
+                    hue = 0.875f;
+                    taskDescription = "INVALID";
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(hue, 0.9f, 0.6f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 1.0f, 0.7f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 1.0f, 0.8f));
+            ImGui::Button(taskDescription.c_str());
+            ImGui::PopStyleColor(3);
+            ImGui::NextColumn();
+        }
+        ImGui::Columns(1);
+        ImGui::Separator();
+
         ImGui::End();
 
         // Rendering
