@@ -11,6 +11,7 @@
 #include <thread>
 #include <boost/asio.hpp>
 #include <fstream>
+#include <map>
 
 #include "lib/imgui/imgui.h"
 #include "imgui_impl_glfw.h"
@@ -44,6 +45,16 @@ enum eTaskState {
 	eDeleted,		/* The task being queried has been deleted, but its TCB has not yet been freed. */
 	eInvalid
  };
+
+struct TaskInfo {
+    unsigned int id;
+    int state;
+    uint32_t runTime;
+    std::string name;
+};
+
+std::map<std::string, TaskInfo> taskList;
+unsigned int currentTaskId = 0;
 
 // Interthread variables
 float magneticData[GRAPH_SIZE] = {0};
@@ -197,15 +208,31 @@ void dataAcquisition() {
                     float valAccx, valAccy, valAccz, valGyrox, valGyroy, valGyroz, valBright;
                     //valSignal = 0;
                     std::getline(is, line);
-                    iss = std::istringstream(line);
-                    iss >> valAccx >> valAccy >> valAccz >> valGyrox >> valGyroy >> valGyroz >> valBright;// >> valSignal;
-                    dataReceived = true;
-                    dataToShow[0] = valAccx;
-                    dataToShow[1] = valAccy;
-                    dataToShow[2] = valAccz;
-                    dataToShow[3] = valGyrox;
-                    dataToShow[4] = valGyroy;
-                    dataToShow[5] = valGyroz;
+
+                    std::string first;
+                    std::istringstream issTesting(line);
+                    issTesting >> first;
+
+                    if (first == "Task:") {
+                        std::string name;
+                        issTesting >> name;
+                        TaskInfo & task = taskList[name];
+                        if (taskList[name].name == "") {
+                            task.name = name;
+                            task.id = currentTaskId++;
+                        }
+                        issTesting >> (task.state) >> (task.runTime);
+                    } else {
+                        iss = std::istringstream(line);
+                        iss >> valAccx >> valAccy >> valAccz >> valGyrox >> valGyroy >> valGyroz >> valBright;// >> valSignal;
+                        dataReceived = true;
+                        dataToShow[0] = valAccx;
+                        dataToShow[1] = valAccy;
+                        dataToShow[2] = valAccz;
+                        dataToShow[3] = valGyrox;
+                        dataToShow[4] = valGyroy;
+                        dataToShow[5] = valGyroz;
+                    }
 
 
 //                    float norm = sqrtf(powf(valMagx, 2) + powf(valMagy, 2) + powf(valMagz, 2));
@@ -540,24 +567,30 @@ int main() {
 
         srand(time(NULL));
 
-        for (int i = 0; i < 6; i++)
-        {
+        uint32_t sum = 0;
+        for (auto it = taskList.begin(); it != taskList.end(); it++) {
+            sum += it->second.runTime;
+        }
+
+        for (auto it = taskList.begin(); it != taskList.end(); it++) {
+            TaskInfo & task = it->second;
+
             char label[32];
-            sprintf(label, "%02d", i);
-            if (ImGui::Selectable(label, selected == i, ImGuiSelectableFlags_SpanAllColumns)) {
-                selected = i;
+            sprintf(label, "%02d", task.id);
+            if (ImGui::Selectable(label, selected == task.id, ImGuiSelectableFlags_SpanAllColumns)) {
+                selected = task.id;
             }
             bool hovered = ImGui::IsItemHovered();
             ImGui::NextColumn();
-            ImGui::Text("FreeRTOS_Task"); ImGui::NextColumn();
+            ImGui::Text(task.name.c_str()); ImGui::NextColumn();
 
-            float progress = (rand() % 100) / 100.0f;
+            float progress = task.runTime / (float) sum;
             ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
             ImGui::NextColumn();
 
             float hue;
             std::string taskDescription;
-            eTaskState taskState = (eTaskState) (rand() % 6);
+            eTaskState taskState = (eTaskState) (task.state);
 
             switch(taskState) {
                 case eRunning:

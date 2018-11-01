@@ -35,6 +35,13 @@ volatile int values[9];
 volatile float ax = 0.0, ay = 0.0, az = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
 
 long v1 = 0L,v2 = 0L,v3 = 0L;
+char c1 = 0;
+char s1[32];
+
+enum eReceptionMode {
+  eDefault, 
+  eTasks,
+} mode = eDefault;
 
 void setup() 
 {
@@ -128,54 +135,79 @@ void loop()
       {Serial.print((char)r_data[i++]);
       } //Print each character*/
 
-      switch (r_data[0]) {
-        // Always ignore the first ID character
-        case 'B':
-          // Various data
-          sscanf(r_data + 1, "%d", &(values[6]));
-          // Process brightness with gamma
-          values[6] = BRIGHTNESS_MAX*pow(values[6]/32387.0,1);
-          if(values[6] < 0) values[6] = BRIGHTNESS_MAX;
-          break;
-        case 'X':
-          // X axis data
-          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
-          ax = v1/100000.0; gx = v2/100000.0;
-          break;
-        case 'Y':
-          // Y axis data
-          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
-          ay = v1/100000.0; gy = v2/100000.0;
-          break;
-       case 'Z':
-          // Z axis data
-          sscanf(r_data + 1, "%ld %ld", &v1, &v2);
-          az = v1/100000.0; gz = v2/100000.0;
-          break;
+      if (mode == eDefault) {
+        switch (r_data[0]) {
+          // Always ignore the first ID character
+          case 'B':
+            // Various data
+            sscanf(r_data + 1, "%d", &(values[6]));
+            // Process brightness with gamma
+            values[6] = BRIGHTNESS_MAX*pow(values[6]/32387.0,1);
+            if(values[6] < 0) values[6] = BRIGHTNESS_MAX;
+            break;
+          case 'X':
+            // X axis data
+            sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+            ax = v1/100000.0; gx = v2/100000.0;
+            break;
+          case 'Y':
+            // Y axis data
+            sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+            ay = v1/100000.0; gy = v2/100000.0;
+            break;
+         case 'Z':
+            // Z axis data
+            sscanf(r_data + 1, "%ld %ld", &v1, &v2);
+            az = v1/100000.0; gz = v2/100000.0;
+            break;
+         case 'T':
+            Serial.println((char*) (r_data + 1));
+            break;
+         case '{':
+            // Mode switch
+            sscanf(r_data + 1, "%c", &c1);
+            if (c1 == 'T') mode = eTasks;
+            break;
+        }
+  
+        Serial.print(ax, 5);
+        Serial.print(' ');
+        Serial.print(ay, 5);
+        Serial.print(' ');
+        Serial.print(az, 5);
+        Serial.print(' ');
+        Serial.print(gx, 5);
+        Serial.print(' ');
+        Serial.print(gy, 5);
+        Serial.print(' ');
+        Serial.print(gz, 5);
+        Serial.print(' ');
+        Serial.print(values[6]);
+        Serial.print(' ');
+        Serial.print(values[7]);
+        Serial.print(' ');
+        Serial.print(values[8]);
+        Serial.print(' ');
+        Serial.print("\r\n");
+        //Serial.println(""); //Print a new line to have a clearer output
+        //Serial.print("Received brightness: ");
+        //Serial.println(values[6]);
+      } else if (mode == eTasks) {
+        if (r_data[0] == '}') {
+          mode = eDefault;
+          continue;
+        }
+        
+        // Receiving FreeRTOS task information now
+        Serial.print("Task: ");
+        sscanf(r_data, "%1ld%ld%s", &v1, &v2, &s1);
+        Serial.print(s1);
+        Serial.print(' ');
+        Serial.print(v1);
+        Serial.print(' ');
+        Serial.print(v2);
+        Serial.print("\r\n");
       }
-
-      Serial.print(ax, 5);
-      Serial.print(' ');
-      Serial.print(ay, 5);
-      Serial.print(' ');
-      Serial.print(az, 5);
-      Serial.print(' ');
-      Serial.print(gx, 5);
-      Serial.print(' ');
-      Serial.print(gy, 5);
-      Serial.print(' ');
-      Serial.print(gz, 5);
-      Serial.print(' ');
-      Serial.print(values[6]);
-      Serial.print(' ');
-      Serial.print(values[7]);
-      Serial.print(' ');
-      Serial.print(values[8]);
-      Serial.print(' ');
-      Serial.print("\r\n");
-      //Serial.println(""); //Print a new line to have a clearer output
-      //Serial.print("Received brightness: ");
-      //Serial.println(values[6]);
 
       if (true) {
         //lcd.setCursor(0,0);
