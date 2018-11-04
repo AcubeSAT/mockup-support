@@ -81,6 +81,7 @@ void setup()
   Serial.println("hello");
 
   pinMode(8, OUTPUT);
+  mode = eTasks;
 }
 
 void loop() 
@@ -93,6 +94,8 @@ void loop()
   if (Serial.available()) {
     digitalWrite(14, HIGH);
     char c = Serial.read();
+    radio.flush_tx();
+    
     if (c == 'l') {
       lcd.setCursor(0,1);
       lcd.print("Sent sat. comm");
@@ -137,10 +140,10 @@ void loop()
       //Serial.print("Received some data: "); //Indicate that we have received something from the RX FIFO
       
       /*while(r_data[i] != '\0') //Print the received data (if the received data is not a string, that implementation is dangerous)
-      {Serial.print((char)r_data[i++]);
-      } //Print each character*/
+      {Serial.print((char)r_data[i++]);} //Print each character
+      Serial.println("");*/
 
-      if (mode == eDefault) {
+      /*if (mode == eDefault) {
         switch (r_data[0]) {
           // Always ignore the first ID character
           case 'B':
@@ -197,7 +200,7 @@ void loop()
         //Serial.println(""); //Print a new line to have a clearer output
         //Serial.print("Received brightness: ");
         //Serial.println(values[6]);
-      } else if (mode == eTasks) {
+      }*/ if (mode == eTasks) {
         if (r_data[0] == '}') {
           mode = eDefault;
           continue;
@@ -214,7 +217,9 @@ void loop()
         Serial.print("\r\n");
       }
 
-      if (true) {
+      
+
+      /*if (true) {
         //lcd.setCursor(0,0);
         //lcd.print("Temp: ");
         //lcd.print((values[1])/10.0);
@@ -229,11 +234,12 @@ void loop()
           }
         }
         lcd.print("]");
-      }
+      }*/
       
       i = 0; //Reset the counting variable for the next round
       
     }
+    radio.flush_rx();
   }
 
 }
