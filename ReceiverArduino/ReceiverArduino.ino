@@ -115,6 +115,11 @@ void loop()
       radio.write( nRF24_payload, sizeof(nRF24_payload));
       delay(11);
       radio.write( nRF24_payload, sizeof(nRF24_payload));
+    } else if (c == 'g') {
+      radio.stopListening();
+      memset((void *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+      sprintf((char *)nRF24_payload, "GPS:Data");
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
     } else if (c == 'r') {
       void (*reset)(void) = 0;
       reset();
