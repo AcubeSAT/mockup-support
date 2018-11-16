@@ -28,8 +28,10 @@ uint8_t address_tx[6] = "SebuC"; //Address of the receiving end
 uint8_t r_data[64] = ""; //Save the received data
 uint8_t i = 0; //Indexing variable used in printing out the received data
 
-uint8_t nRF24_payload[32];
-uint8_t ledStat = 0;
+volatile uint8_t nRF24_payload[32];
+volatile uint8_t ledStat = 0;
+
+volatile int16_t patch_value = 0;
 
 volatile int values[9];
 volatile float ax = 0.0, ay = 0.0, az = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
@@ -81,7 +83,7 @@ void setup()
   Serial.println("hello");
 
   pinMode(8, OUTPUT);
-  mode = eTasks;
+  mode = eDefault;
 }
 
 void loop() 
@@ -91,7 +93,58 @@ void loop()
    * In a future version of this code, this will be included to enchance performance, by using interrupts.
   */
   radio.startListening();
+
   if (Serial.available()) {
+    digitalWrite(14, HIGH);
+    char c = Serial.read();
+    radio.flush_tx();
+    
+    if (c == 'l') {
+      lcd.setCursor(0,1);
+      lcd.print("Sent sat. comm");
+
+      radio.stopListening();
+      ledStat ^= 1;
+      memset((uint8_t *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+      sprintf((char *)nRF24_payload, "L1:%d", ledStat);
+
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      delay(11);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+    } else if (c == 'g') {
+      radio.stopListening();
+      memset((void *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+      sprintf((char *)nRF24_payload, "GPS:Data");
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+    } else if (c == 'r') {
+      void (*reset)(void) = 0;
+      reset();
+    } else if (c == 'p') {
+      radio.stopListening();
+      memset((void *)nRF24_payload, '\0', 32); //Fill all the array space with zeros
+      sprintf((char *)nRF24_payload, "Patch:%d", patch_value);
+      radio.write( nRF24_payload, sizeof(nRF24_payload));
+      
+      if (patch_value > 10) {
+        patch_value = 0;
+      } else {
+        patch_value++;
+      }
+    }
+    digitalWrite(14, LOW);
+  }
+
+  /*if (Serial.available()) {
     digitalWrite(14, HIGH);
     char c = Serial.read();
     radio.flush_tx();
@@ -128,7 +181,7 @@ void loop()
       reset();
     }
     digitalWrite(14, LOW);
-  }
+  }*/
   if(radio.available())
   {
     //Serial.println("We received something."); //Used in debugging the code
@@ -215,6 +268,12 @@ void loop()
         Serial.print(' ');
         Serial.print(v2);
         Serial.print("\r\n");
+      }
+
+      if (mode == eDefault) {
+        while(r_data[i] != '\0') //Print the received data (if the received data is not a string, that implementation is dangerous)
+        {Serial.print((char)r_data[i++]);} //Print each character
+        Serial.println("");
       }
 
       
