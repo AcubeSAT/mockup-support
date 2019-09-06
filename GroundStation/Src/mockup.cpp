@@ -2,6 +2,7 @@
 #include <mockup.hpp>
 #include <cstdio>
 #include <queue>
+#include <AX5043.h>
 #include "mockup.h"
 #include "UARTMessage.h"
 #include "at86rf2xx.hpp"
@@ -24,7 +25,11 @@ void main_cpp() {
     // Init AT86RF233
     AT86RF2XX at86Rf233(&hspi1);
     at86Rf233.init();
-        at86Rf233.set_chan(26);
+    at86Rf233.set_chan(26);
+
+    AX5043 rx(&hspi1, GPIOA, GPIO_PIN_8);
+    rx.enterReceiveMode();
+
 
     while (true) {
 
@@ -76,8 +81,14 @@ void main_cpp() {
 }
 
 void uartLog(const char* data) {
+    uint8_t size = strlen(data) ;
+    char moreData[size + 2];
+    memcpy(moreData, data, size);
+    moreData[size] = '\r';
+    moreData[size + 1] = '\n';
+
     UARTMessage message = {
-            data, static_cast<uint8_t>(strlen(data)), UARTMessage::Log
+            moreData, static_cast<uint8_t>(size + 3), UARTMessage::Log
     };
     uartSend(message);
 }
