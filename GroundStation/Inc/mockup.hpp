@@ -3,6 +3,7 @@
 
 #include "UARTMessage.h"
 
+void uartLog(const char* data);
 void uartSend(uint8_t* data, uint16_t size);
 void uartSend(UARTMessage& message);
 
