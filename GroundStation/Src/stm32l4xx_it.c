@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include <mockup.h>
 #include "main.h"
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/

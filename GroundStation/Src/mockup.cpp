@@ -4,6 +4,7 @@
 #include <queue>
 #include "mockup.h"
 #include "UARTMessage.h"
+#include "at86rf2xx.hpp"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -20,8 +21,14 @@ void main_cpp() {
     static uint8_t messageType;
     uartLog("Welcome\r\n");
 
+    // Init AT86RF233
+    AT86RF2XX at86Rf233(&hspi1);
+    at86Rf233.init();
+        at86Rf233.set_chan(26);
+
     while (true) {
 
+        // UART queue for RX data
         if (!uartQueue.empty()) {
             uint8_t messageType = uartQueue.front();
             uartQueue.pop();
