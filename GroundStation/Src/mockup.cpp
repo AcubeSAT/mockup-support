@@ -12,131 +12,60 @@ std::queue<uint8_t> uartQueue;
 
 extern "C"
 {
-    void gotDatum(uint8_t datum) {
-        uartQueue.push(datum);
-    }
+void gotDatum(uint8_t datum) {
+    uartQueue.push(datum);
+}
 
-    void main_cpp() {
-//        HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+void main_cpp() {
+    static uint8_t messageType;
+    uartLog("Welcome\r\n");
 
-        static uint8_t messageType;
+    while (true) {
 
-        while (true) {
-//            uartLog("Welcome\n");
-            uartSend(reinterpret_cast<const uint8_t *>("Welcome\r\n"), 9);
+        if (!uartQueue.empty()) {
+            uint8_t messageType = uartQueue.front();
+            uartQueue.pop();
 
-            HAL_Delay(500);
+            if (messageType == 0) {
+                // We got a null byte. This shouldn't happen
+            } else {
+                static uint8_t receptionBuffer[257];
+                int index = 1;
 
-            continue;
-            if (!uartQueue.empty()) {
-                uartLog("f\n");
+                while (index < sizeof(receptionBuffer)) {
+                    // Wait until the queue gets data
+                    uint32_t startTicks = HAL_GetTick();
 
-                uint8_t messageType = uartQueue.front();
-                uartQueue.pop();
+                    while (uartQueue.empty()) {
+                        if (HAL_GetTick() - startTicks > 100) {
+                            // Timeoout, cancel reception
+                            uartLog("Timeout\r\n");
+                            break;
+                        }
+                    }
 
-//            if (messageType == 0) {
-//                // We got a null byte. This shouldn't happen
-//            } else {
-//                static uint8_t receptionBuffer[257];
-//                int index = 1;
-//
-//                while(index < sizeof(receptionBuffer)) {
-//                    if (HAL_UART_Receive(&huart2, receptionBuffer + index, geia sas paid, 500) != HAL_OK) {
-//                        UARTMessage message ={
-//                                "timeo\r\n", 7, UARTMessage::Log
-//                        };
-//                        uartSend(message);
-//                        // Failure
-//                        break;
-//                    };
-//
-//                    uint8_t ra[255];
-//                    int sizee = snprintf((char*)ra, 255, "Got byte 0x%x %c\r\n", receptionBuffer[index], receptionBuffer[index]);
-//                    UARTMessage message ={
-//                            (char*)ra, static_cast<uint8_t>(sizee), UARTMessage::Log
-//                    };
-//                    uartSend(message);
-//
-//                    if (receptionBuffer[index] == 0) {
-//                        // Null byte
-//                        // We have a new message (of size index), it should be handled
-//                        UARTMessage message ={
-//                                "Recei\r\n", 7, UARTMessage::Log
-//                        };
-//                        uartSend(message);
-//
-//                        break;
-//                    }
-//
-//                    index++;
-//                }
-//
-//                if (index == sizeof(receptionBuffer)) {
-//                    UARTMessage message ={
-//                            "Fai2r\r\n", 7, UARTMessage::Log
-//                    };
-//                    uartSend(message);
-//                }
-//            }
+                    if (uartQueue.empty()) break;
+
+                    receptionBuffer[index] = uartQueue.front();
+                    uartQueue.pop();
+
+                    // We have a datum!
+
+                    if (receptionBuffer[index] == 0) {
+                        // Null byte
+                        // We have a new message (of size index), it should be handled
+                        uartLog("New msg\r\n");
+
+                        break; // Done with this operation
+                    }
+
+                    index++;
+                }
             }
-
-//        if (HAL_UART_Receive(&huart2, &messageType, 1, 0) == HAL_OK) {
-//            UARTMessage message ={
-//                    "Start\r\n", 7, UARTMessage::Log
-//            };
-//            uartSend(message);
-//
-//            // We got a new datum!
-//            if (messageType == 0) {
-//                // We got a null byte. This shouldn't happen
-//            } else {
-//                static uint8_t receptionBuffer[257];
-//                int index = 1;
-//
-//                while(index < sizeof(receptionBuffer)) {
-//                    if (HAL_UART_Receive(&huart2, receptionBuffer + index, geia sas paid, 500) != HAL_OK) {
-//                        UARTMessage message ={
-//                                "timeo\r\n", 7, UARTMessage::Log
-//                        };
-//                        uartSend(message);
-//                        // Failure
-//                        break;
-//                    };
-//
-//                    uint8_t ra[255];
-//                    int sizee = snprintf((char*)ra, 255, "Got byte 0x%x %c\r\n", receptionBuffer[index], receptionBuffer[index]);
-//                    UARTMessage message ={
-//                            (char*)ra, static_cast<uint8_t>(sizee), UARTMessage::Log
-//                    };
-//                    uartSend(message);
-//
-//                    if (receptionBuffer[index] == 0) {
-//                        // Null byte
-//                        // We have a new message (of size index), it should be handled
-//                        UARTMessage message ={
-//                                "Recei\r\n", 7, UARTMessage::Log
-//                        };
-//                        uartSend(message);
-//
-//                        break;
-//                    }
-//
-//                    index++;
-//                }
-//
-//                if (index == sizeof(receptionBuffer)) {
-//                    UARTMessage message ={
-//                            "Fai2r\r\n", 7, UARTMessage::Log
-//                    };
-//                    uartSend(message);
-//                }
-//            }
-//        }
-
-//        HAL_Delay(200);
         }
-    }
 
+    }
+}
 }
 
 void uartLog(const char* data) {
@@ -162,4 +91,5 @@ void uartSend(UARTMessage& message) {
 
     uartSend(buffer, result.out_len);
 }
+
 #pragma clang diagnostic pop

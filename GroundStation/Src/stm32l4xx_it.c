@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include <mockup.h>
 #include "main.h"
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
@@ -205,7 +206,13 @@ void USART2_IRQHandler(void)
   /* USER CODE BEGIN USART2_IRQn 0 */
   if (LL_USART_IsActiveFlag_RXNE(USART2)) {
       LD3_GPIO_Port->ODR ^= LD3_Pin;
-      volatile uint8_t aaa = USART2->RDR;
+
+      // Reading the data register clears the interrupt. It's important that this variable be volatile.
+      volatile uint8_t datum = USART2->RDR;
+
+//      USART2->RQR |= USART_RQR_RXFRQ;
+
+      gotDatum(datum);
   }
   /* USER CODE END USART2_IRQn 0 */
   /* USER CODE BEGIN USART2_IRQn 1 */
