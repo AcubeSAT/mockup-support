@@ -13,12 +13,12 @@
 #include <stdio.h>
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
-#include "MadgwickAHRS/MadgwickAHRS.h"
 #include <math.h>
 #include <zmq.hpp>
 #include <ecss-services/inc/Services/FunctionManagementService.hpp>
 #include <ecss-services/inc/ServicePool.hpp>
 #include <mockup/ECSSObjects.h>
+#include <ecss-services/inc/Logger.hpp>
 
 // The number of points to include in the graph
 const int GRAPH_SIZE = 300;
@@ -138,7 +138,7 @@ void dataAcquisition() {
 
 
 int main() {
-    std::cout << "Starting" << std::endl;
+    LOG_NOTICE << "Starting";
 
 //    std::ifstream infile;
 //    infile.open("config");
@@ -248,6 +248,14 @@ int main() {
                          ImVec2(ImGui::GetContentRegionAvailWidth(), 80));
 
         ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
+        ImGui::End();
+
+        ImGui::Begin("Parameter Management Service");
+        static auto parameterList = Services.parameterManagement.getParamsList();
+
+        for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
+
+        }
         ImGui::End();
 
         ImGui::Begin("Function Management Service");

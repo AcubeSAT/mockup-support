@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(LinuxReceiver)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 
 find_package(glfw3 REQUIRED)
@@ -27,10 +27,12 @@ include_directories(
 set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp lib/mockup/Service.cpp)
 set(ECSS_PLATFORM lib/ecss-services/src/Platform/x86/Logger.cpp lib/ecss-services/src/Platform/x86/ErrorHandler.cpp)
 add_executable(LinuxReceiver ${SOURCE_FILES} ${ECSS_PLATFORM})
-target_link_libraries (LinuxReceiver ImGui ImGuiDemo MadgwickAHRS glfw GL GLEW dl)
+target_link_libraries (LinuxReceiver ImGui ImGuiDemo glfw GL GLEW dl)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})
 target_link_libraries (LinuxReceiver common)
+set_target_properties(LinuxReceiver PROPERTIES COMPILE_DEFINITIONS LOGLEVEL_TRACE)
+
 
 add_executable(ZMQTestReceiver zmq_test_receiver.cpp)
 target_link_libraries(ZMQTestReceiver ${ZMQ_LIBRARIES})
