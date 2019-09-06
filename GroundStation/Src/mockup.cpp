@@ -17,7 +17,7 @@ extern "C"
     }
 
     void main_cpp() {
-        HAL_GPIO_TogglePin(LD_R_GPIO_Port, LD_R_Pin);
+        HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
 
         uartLog("Welcome\n");
 
