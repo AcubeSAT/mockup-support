@@ -15,11 +15,22 @@ pkg_check_modules(ZMQ libzmq REQUIRED)
 include_directories ("${PROJECT_SOURCE_DIR}/lib/imgui" "${PROJECT_SOURCE_DIR}/lib")
 add_subdirectory (lib)
 
-set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp)
-add_executable(LinuxReceiver ${SOURCE_FILES})
+# ECSS services stuff
+add_subdirectory(lib/ecss-services EXCLUDE_FROM_ALL)
+include_directories(
+        "${PROJECT_SOURCE_DIR}/lib/ecss-services/inc"
+        "${PROJECT_SOURCE_DIR}/lib/ecss-services/lib/etl/include"
+        "${PROJECT_SOURCE_DIR}/lib/freertos/include"
+        "${PROJECT_SOURCE_DIR}/lib/freertos/portable/GCC/ARM_CM4F"
+)
+
+set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp lib/mockup/Service.cpp)
+set(ECSS_PLATFORM lib/ecss-services/src/Platform/x86/Logger.cpp lib/ecss-services/src/Platform/x86/ErrorHandler.cpp)
+add_executable(LinuxReceiver ${SOURCE_FILES} ${ECSS_PLATFORM})
 target_link_libraries (LinuxReceiver ImGui ImGuiDemo MadgwickAHRS glfw GL GLEW dl)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})
+target_link_libraries (LinuxReceiver common)
 
 add_executable(ZMQTestReceiver zmq_test_receiver.cpp)
 target_link_libraries(ZMQTestReceiver ${ZMQ_LIBRARIES})

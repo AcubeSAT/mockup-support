@@ -16,6 +16,9 @@
 #include "MadgwickAHRS/MadgwickAHRS.h"
 #include <math.h>
 #include <zmq.hpp>
+#include <ecss-services/inc/Services/FunctionManagementService.hpp>
+#include <ecss-services/inc/ServicePool.hpp>
+#include <mockup/ECSSObjects.h>
 
 // The number of points to include in the graph
 const int GRAPH_SIZE = 300;
@@ -185,6 +188,8 @@ int main() {
     bool show_test_window = true;
     ImVec4 clear_color = ImColor(35, 44, 59);
 
+    addECSSObjects();
+
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -245,13 +250,22 @@ int main() {
         ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
         ImGui::End();
 
-        ImGui::Begin("Commands to satellite");
+        ImGui::Begin("Function Management Service");
         ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(3.0f, 0.6f, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(3.0f, 0.7f, 0.7f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(3.0f, 0.8f, 0.8f));
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth());
+        ImGui::PushItemWidth(ImGui::GetWindowWidth());
         ImFont* font = ImGui::GetIO().Fonts->Fonts[1];
         ImGui::PushFont(font);
+
+        static FunctionMap & functionMap = Services.functionManagement.getFunctionMap();
+
+        for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
+            if (ImGui::Button((*it).first.c_str())) {
+
+            }
+        }
+
         if (ImGui::Button("Send Command")) {
             pendingCommand = 'l';
         }
