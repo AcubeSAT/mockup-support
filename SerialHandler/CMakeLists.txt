@@ -15,7 +15,7 @@ pkg_check_modules(ZMQ libzmq REQUIRED)
 include_directories ("${PROJECT_SOURCE_DIR}/lib/imgui" "${PROJECT_SOURCE_DIR}/lib")
 add_subdirectory (lib)
 
-set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c)
+set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp)
 add_executable(LinuxReceiver ${SOURCE_FILES})
 target_link_libraries (LinuxReceiver ImGui ImGuiDemo MadgwickAHRS glfw GL GLEW dl)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})

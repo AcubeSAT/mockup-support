@@ -244,7 +244,7 @@ int main() {
 
         ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
         ImGui::End();
-        
+
         ImGui::Begin("Commands to satellite");
         ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(3.0f, 0.6f, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(3.0f, 0.7f, 0.7f));
