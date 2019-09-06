@@ -180,7 +180,7 @@ int main() {
     //io.Fonts->AddFontDefault();
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
     imguiIo.Fonts->AddFontFromFileTTF("/home/kongr45gpen/repos/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/kongr45gpen/repos/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 32.0f);
+    imguiIo.Fonts->AddFontFromFileTTF("/home/kongr45gpen/repos/mockup-support/SerialHandler/ShareTechMono-Regular.ttf", 22.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
@@ -195,7 +195,7 @@ int main() {
         glfwPollEvents();
         ImGui_ImplGlfwGL3_NewFrame();
         if (show_test_window) {
-            ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
             ImGui::ShowTestWindow();
         }
 
@@ -261,20 +261,15 @@ int main() {
         static FunctionMap & functionMap = Services.functionManagement.getFunctionMap();
 
         for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
-            if (ImGui::Button((*it).first.c_str())) {
+            if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(),0})) {
 
             }
         }
 
-        if (ImGui::Button("Send Command")) {
-            pendingCommand = 'l';
-        }
+
         ImGui::PopFont();
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(3);
-        if (ImGui::Button("Reset")) {
-            pendingCommand = 'r';
-        }
         ImGui::End();
 
         ImGui::Begin("Task List");
