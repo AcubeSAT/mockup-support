@@ -18,7 +18,6 @@ add_subdirectory (lib)
 set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c)
 add_executable(LinuxReceiver ${SOURCE_FILES})
 target_link_libraries (LinuxReceiver ImGui ImGuiDemo MadgwickAHRS glfw GL GLEW dl)
-target_link_libraries (LinuxReceiver mysqlcppconn)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})
 
