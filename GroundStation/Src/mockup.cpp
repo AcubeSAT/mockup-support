@@ -17,13 +17,17 @@ extern "C"
     }
 
     void main_cpp() {
-        HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-
-        uartLog("Welcome\n");
+//        HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
 
         static uint8_t messageType;
 
         while (true) {
+//            uartLog("Welcome\n");
+            uartSend(reinterpret_cast<const uint8_t *>("Welcome\r\n"), 9);
+
+            HAL_Delay(500);
+
+            continue;
             if (!uartQueue.empty()) {
                 uartLog("f\n");
 
@@ -142,9 +146,13 @@ void uartLog(const char* data) {
     uartSend(message);
 }
 
-void uartSend(uint8_t* data, uint16_t size) {
+void uartSend(const uint8_t* data, uint16_t size) {
     // This function does not append the message type byte, use with care
-    HAL_UART_Transmit(&huart2, data, size, 100);
+    for (int i = 0; i < size; i++) {
+        while (!LL_USART_IsActiveFlag_TXE(USART2)) {}
+
+        LL_USART_TransmitData8(USART2, data[i]);
+    }
 }
 
 void uartSend(UARTMessage& message) {
@@ -152,6 +160,6 @@ void uartSend(UARTMessage& message) {
 
     cobs_encode_result result = message.encode((char*)buffer, 256);
 
-    HAL_UART_Transmit(&huart2, buffer, result.out_len, 100);
+    uartSend(buffer, result.out_len);
 }
 #pragma clang diagnostic pop
