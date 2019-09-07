@@ -19,6 +19,7 @@
 #include <ecss-services/inc/ServicePool.hpp>
 #include <mockup/ECSSObjects.h>
 #include <ecss-services/inc/Logger.hpp>
+#include <cobs/cobs.h>
 
 // The number of points to include in the graph
 const int GRAPH_SIZE = 300;
@@ -49,6 +50,11 @@ struct TaskInfo {
     int state;
     uint32_t runTime;
     std::string name;
+};
+
+enum MessageType {
+    Log = 1, // A log string
+    SpacePacket = 2, // A CCSDS space packet
 };
 
 std::map<std::string, TaskInfo> taskList;
@@ -103,23 +109,50 @@ void dataAcquisition() {
         std::string line;
         boost::system::error_code ec;
 
+        LOG_INFO << "Connection successful";
+
         // Time when the last MySQL data was sent; used to prevent too frequent updates
-        std::chrono::steady_clock::time_point last_update = std::chrono::steady_clock::now();
-        std::chrono::steady_clock::time_point last_zmq_update = std::chrono::steady_clock::now();
+//        std::chrono::steady_clock::time_point last_update = std::chrono::steady_clock::now();
+//        std::chrono::steady_clock::time_point last_zmq_update = std::chrono::steady_clock::now();
         while (!stop) {
             try {
-                if (pendingCommand != 0) {
-                    // Send pending command to arduino
-                    std::ostringstream oss;
-                    oss << pendingCommand << '\n';
-                    boost::asio::write(serial, boost::asio::buffer(oss.str()));
-                    dataSent = true;
-                    pendingCommand = 0;
+//                if (pendingCommand != 0) {
+//                    // Send pending command to arduino
+//                    std::ostringstream oss;
+//                    oss << pendingCommand << '\n';
+//                    boost::asio::write(serial, boost::asio::buffer(oss.str()));
+//                    dataSent = true;
+//                    pendingCommand = 0;
+//                }
+
+                boost::asio::read_until(serial, buf, 0, ec);
+                Logger::format.decimal();
+                LOG_TRACE << "Read " << buf.size() << " bytes of data";
+
+                std::string receivedRaw(reinterpret_cast<const char*>(buf.data().data()), buf.size());
+
+                buf.consume(buf.size());
+
+                // Decode the received data with cobs
+                uint8_t received[300];
+                auto result = cobs_decode(received, 300, receivedRaw.c_str(), receivedRaw.size() - 1); // strip the last byte
+
+                if (result.out_len < 1) {
+                    // Error
+                    LOG_WARNING << "Too small packet received";
+                    continue;
                 }
 
-                // TODO: Move this into another function
-                // TODO: Make this asynchronous
-                boost::asio::read_until(serial, buf, '\n', ec);
+                if (received[0] == Log) {
+                    // Incoming log
+                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len);
+                } else {
+                    Logger::format.hex();
+                    LOG_WARNING << "Unknown data received: " << received[0];
+                }
+
+
+
 //                    float norm = sqrtf(powf(valMagx, 2) + powf(valMagy, 2) + powf(valMagz, 2));
 
                 //valMagz *= 100;
@@ -128,17 +161,24 @@ void dataAcquisition() {
 
 //        serial.close();
             } catch (boost::system::system_error &e) {
-                std::cerr << "fail";
+                LOG_ERROR << "UART error: " << e.what();
             }
         }
     } catch (boost::system::system_error &e) {
-        std::cerr << "Unable to open interface " << port << ": " << e.what();
+        LOG_EMERGENCY << "Unable to open interface " << port << ": " << e.what();
+        exit(5);
     }
 }
 
 
-int main() {
+int main(int argc, char* argv[]) {
     LOG_NOTICE << "Starting";
+
+    if (argc != 2) {
+        std::cerr << "You have not specified the serial interface to use. Usage: ./LinuxReceiver [/dev/ttyACM0]" << std::endl;
+        return 5;
+    }
+    port = argv[1];
 
 //    std::ifstream infile;
 //    infile.open("config");
@@ -151,7 +191,7 @@ int main() {
 
     publisher.bind("tcp://*:5555");
 
-//    std::thread dataThread(dataAcquisition);
+    std::thread dataThread(dataAcquisition);
 //    std::thread sqlThread(sqlStorage);
 
     // Setup window

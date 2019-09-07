@@ -26,7 +26,8 @@ include_directories(
 
 set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp lib/mockup/Service.cpp)
 set(ECSS_PLATFORM lib/ecss-services/src/Platform/x86/Logger.cpp lib/ecss-services/src/Platform/x86/ErrorHandler.cpp)
-add_executable(LinuxReceiver ${SOURCE_FILES} ${ECSS_PLATFORM})
+set(VARIOUS lib/cobs/cobs.c)
+add_executable(LinuxReceiver ${SOURCE_FILES} ${ECSS_PLATFORM} ${VARIOUS})
 target_link_libraries (LinuxReceiver ImGui ImGuiDemo glfw GL GLEW dl)
 target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})

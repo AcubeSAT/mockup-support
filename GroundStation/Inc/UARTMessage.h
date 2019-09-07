@@ -34,7 +34,7 @@ public:
      */
     cobs_encode_result encode(char* output, size_t outputSize) {
         // Append the message type to the message itself
-        this->message[0] = static_cast<uint8_t>(messageType);
+        message[0] = static_cast<uint8_t>(messageType);
 
         cobs_encode_result result = cobs_encode(output, outputSize - 1, message, length);
 
