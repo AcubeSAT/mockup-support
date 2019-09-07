@@ -298,6 +298,7 @@ int main(int argc, char* argv[]) {
             ParameterBase* parameter = (it->second);
 
             ImGui::PushID(it->first);
+            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 340);
 
             if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
                 ImGui::DragScalar("8-bit integer",        ImGuiDataType_U8,     parameter->ptr(), 1);
@@ -309,9 +310,24 @@ int main(int argc, char* argv[]) {
                 ImGui::DragScalar("64-bit double",        ImGuiDataType_Double,     parameter->ptr(), 0.01);
             }
 
+            ImGui::SameLine();
+            if (ImGui::Button("Update", {100, 0})) {
+                Logger::format.decimal();
+                LOG_DEBUG << "Got call to update parameter _" << parIdToString[it->first] << "_ [" << it->first << "]";
+
+                Message message(20, 3, Message::TC, 1);
+                message.appendUint16(1); // Number of parameters to update
+                message.appendUint16(it->first); // Parameter ID
+                message.appendString(it->second->getValueAsString());
+
+                LOG_TRACE << "New message with size " << message.dataSize;
+                Service::storeMessage(message);
+            }
+
+            ImGui::PopItemWidth();
             ImGui::PopID();
 
-            ImGui::Spacing();
+            ImGui::NewLine();
         }
         ImGui::End();
 
