@@ -24,7 +24,7 @@ include_directories(
         "${PROJECT_SOURCE_DIR}/lib/freertos/portable/GCC/ARM_CM4F"
 )
 
-set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp lib/mockup/Service.cpp)
+set(SOURCE_FILES main.cpp imgui_impl_glfw.cpp gl3w.c lib/mockup/ECSSObjects.cpp)
 set(ECSS_PLATFORM lib/ecss-services/src/Platform/x86/Logger.cpp lib/ecss-services/src/Platform/x86/ErrorHandler.cpp)
 set(VARIOUS lib/cobs/cobs.c)
 add_executable(LinuxReceiver ${SOURCE_FILES} ${ECSS_PLATFORM} ${VARIOUS})

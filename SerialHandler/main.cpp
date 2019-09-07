@@ -20,6 +20,10 @@
 #include <mockup/ECSSObjects.h>
 #include <ecss-services/inc/Logger.hpp>
 #include <cobs/cobs.h>
+#include <queue>
+
+
+using namespace std::chrono_literals;
 
 // The number of points to include in the graph
 const int GRAPH_SIZE = 300;
@@ -95,6 +99,11 @@ float varAngx = 0, varAngy = 0, varAngz = 0;
 
 float dataToShow[6];
 
+/**
+ * A queue of ECSS messages to be sent
+ */
+std::queue<Message> txMessages;
+
 void dataAcquisition() {
     try {
         // Serial interface initialisation
@@ -125,7 +134,20 @@ void dataAcquisition() {
 //                    pendingCommand = 0;
 //                }
 
-                boost::asio::read_until(serial, buf, 0, ec);
+                //TODO: Parallelism fixes
+                if (!txMessages.empty()) {
+                    Message message = txMessages.back();
+                    txMessages.pop();
+
+                    auto data = MessageParser::composeECSS(message);
+
+                    LOG_TRACE << "Will send " << data.size() << " bytes of data.";
+//                    boost::asio::write(serial, boost::asio::buffer(data.c_str(), data.size()));
+                }
+
+                std::this_thread::sleep_for(10ms);
+                continue;
+//                boost::asio::read_until(serial, buf, 0, ec);
                 Logger::format.decimal();
                 LOG_TRACE << "Read " << buf.size() << " bytes of data";
 
@@ -461,4 +483,27 @@ int main(int argc, char* argv[]) {
     glfwTerminate();
 
     return 0;
+}
+
+void Service::storeMessage(Message& message) {
+    // appends the remaining bits to complete a byte
+    message.finalize();
+
+    // Create a new stream to display the packet
+    std::ostringstream ss;
+
+    // Just print it to the screen
+    ss << "New " << ((message.packetType == Message::TM) ? "TM" : "TC") << "["
+       << std::hex
+       << static_cast<int>(message.serviceType) << "," // Ignore-MISRA
+       << static_cast<int>(message.messageType) // Ignore-MISRA
+       << "] message! ";
+
+    for (unsigned int i = 0; i < message.dataSize; i++) {
+        ss << static_cast<int>(message.data[i]) << " "; // Ignore-MISRA
+    }
+
+    LOG_TRACE << ss.str();
+
+    txMessages.push(message);
 }
