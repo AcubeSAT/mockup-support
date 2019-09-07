@@ -9,6 +9,7 @@ public:
     enum MessageType {
         Log = 1, // A log string
         SpacePacket = 2, // A CCSDS space packet
+        Ping = 3, // Ping message
     };
 
 private:

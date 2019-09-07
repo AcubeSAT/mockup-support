@@ -20,6 +20,7 @@ void gotDatum(uint8_t datum) {
 
 void main_cpp() {
     static uint8_t messageType;
+    static uint32_t lastPingTime = HAL_GetTick();
     uartLog("Welcome\r\n");
 
     // Init AT86RF233
@@ -32,6 +33,12 @@ void main_cpp() {
 
 
     while (true) {
+        if (HAL_GetTick() - lastPingTime > 100) {
+            uint8_t data[2] = {'c','s'};
+            UARTMessage ping{(char*)data, 2, UARTMessage::Ping};
+            uartSend(ping);
+            lastPingTime = HAL_GetTick();
+        }
 
         // UART queue for RX data
         if (!uartQueue.empty()) {

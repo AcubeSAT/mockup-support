@@ -59,6 +59,7 @@ struct TaskInfo {
 enum MessageType {
     Log = 1, // A log string
     SpacePacket = 2, // A CCSDS space packet
+    Ping = 3, // Ping message
 };
 
 std::map<std::string, TaskInfo> taskList;
@@ -141,13 +142,18 @@ void dataAcquisition() {
 
                     auto data = MessageParser::composeECSS(message);
 
+                    // Now encode the data via COBS
+                    data.insert(data.begin(), static_cast<uint8_t>(MessageType::SpacePacket)); // Append packet type
+
                     LOG_TRACE << "Will send " << data.size() << " bytes of data.";
-//                    boost::asio::write(serial, boost::asio::buffer(data.c_str(), data.size()));
+
+                    uint8_t encoded[258];
+                    auto result = cobs_encode(encoded, 257, data.c_str(), data.size());
+                    encoded[result.out_len] = 0; // The null byte
+                    boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
                 }
 
-                std::this_thread::sleep_for(10ms);
-                continue;
-//                boost::asio::read_until(serial, buf, 0, ec);
+                boost::asio::read_until(serial, buf, 0, ec);
                 Logger::format.decimal();
                 LOG_TRACE << "Read " << buf.size() << " bytes of data";
 
@@ -168,9 +174,11 @@ void dataAcquisition() {
                 if (received[0] == Log) {
                     // Incoming log
                     LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len);
+                } else if (received[0] == Ping) {
+                    // Do nothing
                 } else {
-                    Logger::format.hex();
-                    LOG_WARNING << "Unknown data received: " << received[0];
+                        Logger::format.hex();
+                        LOG_WARNING << "Unknown data received: " << received[0];
                 }
 
 
