@@ -1,7 +1,9 @@
 #include <ecss-services/inc/Services/ParameterService.hpp>
 #include <ecss-services/inc/ServicePool.hpp>
 #include "ECSSObjects.h"
+#include <map>
 
+std::map<uint32_t, std::string> parIdToString;
 
 Parameter<uint8_t> redBrightness = Parameter<uint8_t>(0, 0, 3);
 Parameter<uint8_t> greenBrightness = Parameter<uint8_t>(0, 0, 3);
@@ -28,19 +30,31 @@ void addECSSObjects() {
     ParameterService & parameters = Services.parameterManagement;
 
     parameters.addNewParameter(1, redBrightness);
+    parIdToString[1] = "redBrightness";
     parameters.addNewParameter(2, greenBrightness);
+    parIdToString[2] = "greenBrightness";
     parameters.addNewParameter(3, blueBrightness);
+    parIdToString[3] = "blueBrightness";
     parameters.addNewParameter(4, parameterColourMaster);
+    parIdToString[4] = "totalBrightness";
     parameters.addNewParameter(5, colourPeriod);
+    parIdToString[5] = "Colour Duration";
     parameters.addNewParameter(6, colourPhase);
+    parIdToString[6] = "Colour Phase";
 
     parameters.addNewParameter(10, angleX);
+    parIdToString[10] = "Angle X";
     parameters.addNewParameter(11, angleY);
+    parIdToString[11] = "Angle Y";
     parameters.addNewParameter(12, angleZ);
+    parIdToString[12] = "Angle Z";
 
     parameters.addNewParameter(20, brightness);
+    parIdToString[20] = "Brightness";
     parameters.addNewParameter(21, tempInternal);
+    parIdToString[21] = "Temperature Internal";
     parameters.addNewParameter(22, tempExternal);
+    parIdToString[22] = "Temperature External";
 
     FunctionManagementService & functions = Services.functionManagement;
     functions.include("led_toggle", n);

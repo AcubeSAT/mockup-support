@@ -1,6 +1,9 @@
 #ifndef MOCKUP_4_ECSSOBJECTS_H
 #define MOCKUP_4_ECSSOBJECTS_H
 
+#include <map>
+
+extern std::map<uint32_t, std::string> parIdToString;
 
 // LED strip parameters
 extern Parameter<uint8_t> redBrightness;

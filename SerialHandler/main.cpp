@@ -254,7 +254,24 @@ int main() {
         static auto parameterList = Services.parameterManagement.getParamsList();
 
         for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
+            ImGui::Text("%s", parIdToString[it->first].data());
+            ParameterBase* parameter = (it->second);
 
+            ImGui::PushID(it->first);
+
+            if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
+                ImGui::DragScalar("8-bit integer",        ImGuiDataType_U8,     parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<uint32_t>*>(parameter) != nullptr) {
+                ImGui::DragScalar("32-bit integer",        ImGuiDataType_U32,     parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<float>*>(parameter) != nullptr) {
+                ImGui::DragScalar("32-bit float",        ImGuiDataType_Float,     parameter->ptr(), 0.01);
+            } else if (dynamic_cast<Parameter<double>*>(parameter) != nullptr) {
+                ImGui::DragScalar("64-bit double",        ImGuiDataType_Double,     parameter->ptr(), 0.01);
+            }
+
+            ImGui::PopID();
+
+            ImGui::Spacing();
         }
         ImGui::End();
 
