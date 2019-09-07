@@ -327,7 +327,14 @@ int main(int argc, char* argv[]) {
 
         for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
             if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(),0})) {
+                auto name = it->first;
+                LOG_DEBUG << "Creating _" << name.c_str() << "_ function call";
 
+                // Create a new message
+                Message message(8, 1, Message::TC, 1);
+                message.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>(name));
+                LOG_TRACE << "New message with size " << message.dataSize;
+                Service::storeMessage(message);
             }
         }
 
