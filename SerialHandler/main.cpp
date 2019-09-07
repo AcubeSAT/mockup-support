@@ -145,7 +145,7 @@ void dataAcquisition() {
                     // Now encode the data via COBS
                     data.insert(data.begin(), static_cast<uint8_t>(MessageType::SpacePacket)); // Append packet type
 
-                    LOG_TRACE << "Will send " << data.size() << " bytes of data.";
+                    LOG_TRACE << "Will send " << data.size() << " bytes of data. " << data[0];
 
                     uint8_t encoded[258];
                     auto result = cobs_encode(encoded, 257, data.c_str(), data.size());

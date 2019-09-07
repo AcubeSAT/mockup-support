@@ -29,7 +29,7 @@ void main_cpp() {
     at86Rf233.set_chan(26);
 
     AX5043 rx(&hspi1, GPIOA, GPIO_PIN_8);
-    rx.enterReceiveMode();
+    rx.enterTransmitMode();
 
 
     while (true) {
@@ -50,6 +50,7 @@ void main_cpp() {
             } else {
                 static uint8_t receptionBuffer[257];
                 int index = 1;
+                receptionBuffer[0] = messageType;
 
                 while (index < sizeof(receptionBuffer)) {
                     // Wait until the queue gets data
@@ -74,6 +75,20 @@ void main_cpp() {
                         // Null byte
                         // We have a new message (of size index), it should be handled
                         uartLog("New msg\r\n");
+
+                        uint8_t decodedBuffer[256];
+                        // Decode the data via COBS
+                        auto result = cobs_decode(decodedBuffer, 256, receptionBuffer, index);
+                        if (decodedBuffer[0] == static_cast<uint8_t >(UARTMessage::SpacePacket)) {
+                            uartLog("Space\r\n");
+
+                            // Now, we can transmit the packet via AX5043
+                            rx.transmitPacket(decodedBuffer + 1, result.out_len - 1);
+                        } else {
+                            char t[255];
+                            snprintf(t, 255, "other %d\r\n", index);
+                            uartLog(t);
+                        }
 
                         break; // Done with this operation
                     }

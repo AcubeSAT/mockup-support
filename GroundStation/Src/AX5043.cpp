@@ -704,6 +704,8 @@ void AX5043::transmitPacket(uint8_t *data, size_t length) {
     while (true) {
         auto radioState = readReg(Register::RadioState);
         if (radioState == RadioState::Idle) {
+
+            uartLog("Data transmitted successfully!");
             //LOG_DEBUG << "Data sent!";
             //LOG_TRACE << "Number of words currently in FIFO: 0x" << readReg(Register::FIFOCount0) << " 0x" << readReg(Register::FIFOStat);
 
