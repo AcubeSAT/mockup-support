@@ -8,7 +8,7 @@ std::map<uint32_t, std::string> parIdToString;
 Parameter<uint8_t> redBrightness = Parameter<uint8_t>(0, 0, 3);
 Parameter<uint8_t> greenBrightness = Parameter<uint8_t>(0, 0, 3);
 Parameter<uint8_t> blueBrightness = Parameter<uint8_t>(0, 0, 255);
-Parameter<uint8_t> parameterColourMaster = Parameter<uint8_t>(0, 0, 128);
+Parameter<uint8_t> parameterColourMaster = Parameter<uint8_t>(0, 0, 255);
 Parameter<uint32_t> colourPeriod = Parameter<uint32_t>(0, 0, 500);
 Parameter<float> colourPhase = Parameter<float>(0, 0, 0.03);
 
@@ -36,17 +36,17 @@ void addECSSObjects() {
     ParameterService & parameters = Services.parameterManagement;
 
     parameters.addNewParameter(1, redBrightness);
-//    parIdToString[1] = "redBrightness";
+    parIdToString[1] = "redBrightness";
     parameters.addNewParameter(2, greenBrightness);
-//    parIdToString[2] = "greenBrightness";
+    parIdToString[2] = "greenBrightness";
     parameters.addNewParameter(3, blueBrightness);
-//    parIdToString[3] = "blueBrightness";
+    parIdToString[3] = "blueBrightness";
     parameters.addNewParameter(4, parameterColourMaster);
-//    parIdToString[4] = "totalBrightness";
+    parIdToString[4] = "totalBrightness";
     parameters.addNewParameter(5, colourPeriod);
-//    parIdToString[5] = "Colour Duration";
+    parIdToString[5] = "Colour Duration";
     parameters.addNewParameter(6, colourPhase);
-//    parIdToString[6] = "Colour Phase";
+    parIdToString[6] = "Colour Phase";
 
     parameters.addNewParameter(10, angleX);
     parIdToString[10] = "Angle X";

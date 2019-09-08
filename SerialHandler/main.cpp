@@ -347,25 +347,11 @@ int main(int argc, char* argv[]) {
         for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
             if (parIdToString.find(it->first) == parIdToString.end()) continue;
 
-            ImGui::Text("%s", parIdToString[it->first].data());
+//            ImGui::Text("%s", parIdToString[it->first].data());
             ParameterBase* parameter = (it->second);
 
             ImGui::PushID(it->first);
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 340);
 
-            ImGui::PushFont(font);
-            if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
-                ImGui::DragScalar("8-bit integer",        ImGuiDataType_U8,     parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<uint32_t>*>(parameter) != nullptr) {
-                ImGui::DragScalar("32-bit integer",        ImGuiDataType_U32,     parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<float>*>(parameter) != nullptr) {
-                ImGui::DragScalar("32-bit float",        ImGuiDataType_Float,     parameter->ptr(), 0.01);
-            } else if (dynamic_cast<Parameter<double>*>(parameter) != nullptr) {
-                ImGui::DragScalar("64-bit double",        ImGuiDataType_Double,     parameter->ptr(), 0.01);
-            }
-            ImGui::PopFont();
-
-            ImGui::SameLine();
             if (ImGui::Button("Update", {100, 0})) {
                 Logger::format.decimal();
                 LOG_DEBUG << "Got call to update parameter _" << parIdToString[it->first] << "_ [" << it->first << "]";
@@ -379,10 +365,27 @@ int main(int argc, char* argv[]) {
                 Service::storeMessage(message);
             }
 
+            ImGui::SameLine();
+            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 200);
+
+            ImGui::PushFont(font);
+            if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_U8,     parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<uint32_t>*>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_U32,     parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<float>*>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_Float,     parameter->ptr(), 0.001);
+            } else if (dynamic_cast<Parameter<double>*>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_Double,     parameter->ptr(), 0.001);
+            }
+            ImGui::PopFont();
+
+
+
             ImGui::PopItemWidth();
             ImGui::PopID();
 
-            ImGui::NewLine();
+//            ImGui::NewLine();
         }
         ImGui::End();
 
