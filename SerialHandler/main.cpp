@@ -344,6 +344,8 @@ int main(int argc, char* argv[]) {
         static auto parameterList = Services.parameterManagement.getParamsList();
 
         for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
+            if (parIdToString.find(it->first) == parIdToString.end()) continue;
+
             ImGui::Text("%s", parIdToString[it->first].data());
             ParameterBase* parameter = (it->second);
 
@@ -444,15 +446,30 @@ int main(int argc, char* argv[]) {
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -150, 150, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
+        }
+        ImGui::SameLine();
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroX.getValue(), values), 0, "Gyro X", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -150, 150, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
+        }
+        ImGui::SameLine();
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroY.getValue(), values), 0, "Gyro Y", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -150, 150, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
+        }
+        ImGui::SameLine();
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
         }
         ImGui::End();
 

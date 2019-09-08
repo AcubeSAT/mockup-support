@@ -17,6 +17,12 @@ extern Parameter<float> colourPhase;
 extern Parameter<float> angleX;
 extern Parameter<float> angleY;
 extern Parameter<float> angleZ;
+extern Parameter<float> gyroX;
+extern Parameter<float> gyroY;
+extern Parameter<float> gyroZ;
+extern Parameter<float> accelX;
+extern Parameter<float> accelY;
+extern Parameter<float> accelZ;
 
 // Various sensors
 extern Parameter<float> brightness;
