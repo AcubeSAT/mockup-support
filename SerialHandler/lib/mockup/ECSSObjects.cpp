@@ -81,6 +81,10 @@ void addECSSObjects() {
     functions.include("led_strip_m", n);
     functions.include("led_strip_c", n);
     functions.include("led_strip_g", n);
+    functions.include("led_AUTOfade_on", n);
+    functions.include("led_AUTOfade_off", n);
+    functions.include("flash_white", n);
+    functions.include("flash_fluorescent", n);
     functions.include("calib_euler", n);
     functions.include("calib_gyro", n);
 
