@@ -62,11 +62,11 @@ void addECSSObjects() {
     parameters.addNewParameter(15, gyroZ);
     parIdToString[15] = "Gyroscope Z";
     parameters.addNewParameter(16, accelX);
-    parIdToString[16] = "Acceleration X";
+//    parIdToString[16] = "Acceleration X";
     parameters.addNewParameter(17, accelY);
-    parIdToString[17] = "Acceleration Y";
+//    parIdToString[17] = "Acceleration Y";
     parameters.addNewParameter(18, accelZ);
-    parIdToString[18] = "Acceleration Z";
+//    parIdToString[18] = "Acceleration Z";
 
     parameters.addNewParameter(20, brightness);
     parIdToString[20] = "Brightness";
@@ -88,5 +88,6 @@ void addECSSObjects() {
     housekeeping.addHousekeepingStructure(1, {250, {10, 11, 12}});
     housekeeping.addHousekeepingStructure(2, {60, {20, 21, 22}});
     housekeeping.addHousekeepingStructure(3, {60, {13, 14, 15}});
+    housekeeping.addHousekeepingStructure(4, {50, {10, 11, 12, 20, 21, 22, 13, 14, 15}});
 }
 

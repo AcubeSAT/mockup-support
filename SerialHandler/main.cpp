@@ -239,7 +239,9 @@ int main(int argc, char* argv[]) {
 //    infile >> host >> username >> password >> database >> port;
 //    infile.close();
 
-    publisher.bind("tcp://*:5555");
+    publisher.bind("tcp://*:5556");
+
+    addECSSObjects();
 
     std::thread dataThread(dataAcquisition);
 //    std::thread sqlThread(sqlStorage);
@@ -277,9 +279,6 @@ int main(int argc, char* argv[]) {
 
     bool show_test_window = true;
     ImVec4 clear_color = ImColor(35, 44, 59);
-
-    addECSSObjects();
-
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -343,6 +342,8 @@ int main(int argc, char* argv[]) {
         ImGui::Begin("Parameter Management Service");
         static auto parameterList = Services.parameterManagement.getParamsList();
 
+        ImFont* font = ImGui::GetIO().Fonts->Fonts[1];
+
         for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
             if (parIdToString.find(it->first) == parIdToString.end()) continue;
 
@@ -352,6 +353,7 @@ int main(int argc, char* argv[]) {
             ImGui::PushID(it->first);
             ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 340);
 
+            ImGui::PushFont(font);
             if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
                 ImGui::DragScalar("8-bit integer",        ImGuiDataType_U8,     parameter->ptr(), 1);
             } else if (dynamic_cast<Parameter<uint32_t>*>(parameter) != nullptr) {
@@ -361,6 +363,7 @@ int main(int argc, char* argv[]) {
             } else if (dynamic_cast<Parameter<double>*>(parameter) != nullptr) {
                 ImGui::DragScalar("64-bit double",        ImGuiDataType_Double,     parameter->ptr(), 0.01);
             }
+            ImGui::PopFont();
 
             ImGui::SameLine();
             if (ImGui::Button("Update", {100, 0})) {
@@ -388,7 +391,6 @@ int main(int argc, char* argv[]) {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(3.0f, 0.7f, 0.7f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(3.0f, 0.8f, 0.8f));
         ImGui::PushItemWidth(ImGui::GetWindowWidth());
-        ImFont* font = ImGui::GetIO().Fonts->Fonts[1];
         ImGui::PushFont(font);
 
         static FunctionMap & functionMap = Services.functionManagement.getFunctionMap();
@@ -434,7 +436,7 @@ int main(int argc, char* argv[]) {
         ImGui::Begin("Graphs");
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(),0.5), values), 0, "Brightness", 0, pow(60000.0f,0.5), ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(),0.3), values), 0, "Brightness", 0, pow(10000.0f,0.3), ImVec2(graphWidth,graphHeight));
         }
         {
             static std::deque<float> values;
@@ -444,6 +446,7 @@ int main(int argc, char* argv[]) {
             static std::deque<float> values;
 //            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Temperature Ext", 0, 60000.0f, ImVec2(0,80));
         }
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor::HSV(3.0f, 0.5f, 0.5f, 0.6f));
         {
             static std::deque<float> values;
             ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
@@ -471,6 +474,7 @@ int main(int argc, char* argv[]) {
             static std::deque<float> values;
             ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
         }
+        ImGui::PopStyleColor();
         ImGui::End();
 
         ImGui::Begin("Task List");

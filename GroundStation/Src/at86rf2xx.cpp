@@ -234,13 +234,24 @@ uint16_t AT86RF2XX::tx_load(uint8_t *data, uint16_t len, uint16_t offset) {
 }
 
 void AT86RF2XX::tx_exec() {
-  /* write frame length field in FIFO */
-  sram_write(0, &(frame_len), 1);
-  /* trigger sending of pre-loaded frame */
-  reg_write(AT86RF2XX_REG__TRX_STATE, AT86RF2XX_TRX_STATE__TX_START);
-  /*if (at86rf2xx.event_cb && (at86rf2xx.options & AT86RF2XX_OPT_TELL_TX_START))
-  { at86rf2xx.event_cb(NETDEV_EVENT_TX_STARTED, NULL);
-  }*/
+    /* write frame length field in FIFO */
+    sram_write(0, &(frame_len), 1);
+    /* trigger sending of pre-loaded frame */
+    reg_write(AT86RF2XX_REG__TRX_STATE, AT86RF2XX_TRX_STATE__TX_START);
+    /*if (at86rf2xx.event_cb && (at86rf2xx.options & AT86RF2XX_OPT_TELL_TX_START))
+    { at86rf2xx.event_cb(NETDEV_EVENT_TX_STARTED, NULL);
+    }*/
+
+    // Wait until TX is complete
+    do {
+        state = get_status();
+    } while (state == AT86RF2XX_STATE_BUSY_TX_ARET);
+
+    // Perform a read to the register, since TX is complete
+    reg_read(AT86RF2XX_REG__IRQ_STATUS);
+
+    // Set to RX state
+    set_state(AT86RF2XX_STATE_RX_AACK_ON);
 }
 
 uint16_t AT86RF2XX::rx_len() {

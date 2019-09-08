@@ -32,8 +32,8 @@ void main_cpp() {
     at86Rf233.init();
     at86Rf233.set_chan(26);
 
-    AX5043 rx(&hspi1, GPIOA, GPIO_PIN_8);
-    rx.enterTransmitMode();
+//    AX5043 rx(&hspi1, GPIOA, GPIO_PIN_8);
+//    rx.enterTransmitMode();
 
 
     while (true) {
@@ -64,7 +64,7 @@ void main_cpp() {
 
                     while (uartQueue.empty()) {
                         if (HAL_GetTick() - startTicks > 100) {
-                            // Timeoout, cancel reception
+                            // Timeout, cancel reception
                             uartLog("Timeout\r\n");
                             break;
                         }
@@ -88,8 +88,8 @@ void main_cpp() {
                         if (decodedBuffer[0] == static_cast<uint8_t >(UARTMessage::SpacePacket)) {
                             uartLog("Space\r\n");
 
-                            // Now, we can transmit the packet via AX5043
-                            rx.transmitPacket(decodedBuffer + 1, result.out_len - 1);
+                            // Now, we can transmit the packet via AT86RF233
+                            at86Rf233.send(decodedBuffer + 1, result.out_len - 1);
                         } else {
                             char t[255];
                             snprintf(t, 255, "other %d\r\n", index);
@@ -139,18 +139,13 @@ void uartSend(UARTMessage& message) {
 }
 
 void at86_receive_data() {
+    // Get the packet length (first item in FIFO)
     uint16_t pkt_len = at86Rf233.rx_len();
-    uint8_t str[25];
-//    std::sprintf((char *)str, "Frame length: %d bytes\r\n", pkt_len);
-//    HAL_UART_Transmit(&huart2, str, 15, 100);
 
-    /*  Print the frame, byte for byte  */
-//    std::sprintf((char *)str, "Frame dump (ASCII):\r\n");
-//    HAL_UART_Transmit(&huart2, str, 21, 100);
     uint8_t data[pkt_len];
     at86Rf233.rx_read(data, pkt_len, 0);
 
-    uartLog("Got some datas");
+//    uartLog("Got some datas");
 
     if (pkt_len > 255) {
         uartLog("Too long pkt");
@@ -160,26 +155,10 @@ void at86_receive_data() {
         };
         uartSend(message);
     }
-
-    // Encode the data in a packet
-
-
-//    for (int d = 0; d < pkt_len; d++) {
-//        uint8_t currByte = data[d];
-//        HAL_UART_Transmit(&huart2, &currByte, 1, 100);
-//    }
-
-    //    /* How many frames is this so far?  */
-    //    Serial.print("[[Total frames received: ");
-    //    Serial.print(++received);
-    //    Serial.println("]]\n");
 }
 
 
 void at86_eventHandler() {
-    /* One less event to handle! */
-    // AT86RF2XX::events--;
-
     /* If transceiver is sleeping register access is impossible and frames are
      * lost anyway, so return immediately.
      */
