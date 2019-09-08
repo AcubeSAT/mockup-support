@@ -37,7 +37,7 @@ public:
         // Append the message type to the message itself
         message[0] = static_cast<uint8_t>(messageType);
 
-        cobs_encode_result result = cobs_encode(output, outputSize - 1, message, length);
+        cobs_encode_result result = cobs_encode(output, outputSize - 1, message, length + 1);
 
         // Append a null byte to the end of the result, as dictated by COBS
         output[result.out_len] = '\0';

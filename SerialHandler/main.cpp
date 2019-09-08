@@ -21,6 +21,7 @@
 #include <ecss-services/inc/Logger.hpp>
 #include <cobs/cobs.h>
 #include <queue>
+#include <deque>
 
 
 using namespace std::chrono_literals;
@@ -404,9 +405,55 @@ int main(int argc, char* argv[]) {
         }
 
 
+//        static std::map<int, std::queue<float>> values;
+
+        static constexpr size_t graphSize = 500;
+        static constexpr int graphWidth = 500;
+        static constexpr int graphHeight = 110;
+        float tempStorage[graphSize];
+
+        std::function<int(float,std::deque<float>&)> addToGraph = [&tempStorage](float value, std::deque<float> & values) {
+            values.push_back(value);
+            if (values.size() > graphSize) {
+                values.pop_front();
+            }
+
+            for (int i = 0; i < values.size(); i++) {
+                *(tempStorage + i) = values[i];
+            }
+
+            return values.size();
+        };
+
         ImGui::PopFont();
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(3);
+        ImGui::End();
+        ImGui::Begin("Graphs");
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Brightness", 0, 60000.0f, ImVec2(graphWidth,graphHeight));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25, 35, ImVec2(graphWidth,graphHeight));
+        }
+        {
+            static std::deque<float> values;
+//            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Temperature Ext", 0, 60000.0f, ImVec2(0,80));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -150, 150, ImVec2(graphWidth,graphHeight));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -150, 150, ImVec2(graphWidth,graphHeight));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -150, 150, ImVec2(graphWidth,graphHeight));
+        }
         ImGui::End();
 
         ImGui::Begin("Task List");
