@@ -434,7 +434,7 @@ int main(int argc, char* argv[]) {
         ImGui::Begin("Graphs");
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Brightness", 0, 60000.0f, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(),0.5), values), 0, "Brightness", 0, pow(60000.0f,0.5), ImVec2(graphWidth,graphHeight));
         }
         {
             static std::deque<float> values;
