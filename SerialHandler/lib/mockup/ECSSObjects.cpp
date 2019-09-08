@@ -12,9 +12,9 @@ Parameter<uint8_t> parameterColourMaster = Parameter<uint8_t>(0, 0, 128);
 Parameter<uint32_t> colourPeriod = Parameter<uint32_t>(0, 0, 500);
 Parameter<float> colourPhase = Parameter<float>(0, 0, 0.03);
 
-Parameter<double> angleX = Parameter<double>(0,0,0);
-Parameter<double> angleY = Parameter<double>(0,0,0);
-Parameter<double> angleZ = Parameter<double>(0,0,0);
+Parameter<float> angleX = Parameter<float>(0,0,0);
+Parameter<float> angleY = Parameter<float>(0,0,0);
+Parameter<float> angleZ = Parameter<float>(0,0,0);
 
 Parameter<float> brightness = Parameter<float>(0,0,0);
 Parameter<float> tempInternal = Parameter<float>(0,0,-100);

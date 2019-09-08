@@ -153,17 +153,26 @@ void dataAcquisition() {
                     boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
                 }
 
-                boost::asio::read_until(serial, buf, 0, ec);
+                boost::asio::read_until(serial, buf, '\0', ec);
                 Logger::format.decimal();
-                LOG_TRACE << "Read " << buf.size() << " bytes of data";
+//                LOG_TRACE << "Read " << buf.size() << " bytes of data";
 
-                std::string receivedRaw(reinterpret_cast<const char*>(buf.data().data()), buf.size());
+                std::string receivedAll(reinterpret_cast<const char*>(buf.data().data()), buf.size());
 
-                buf.consume(buf.size());
+                // Find the first occurence of a zero
+                size_t zeroLocation = receivedAll.find('\0');
+                std::string receivedRaw(reinterpret_cast<const char*>(buf.data().data()), zeroLocation);
+                buf.consume(zeroLocation + 1);
+
 
                 // Decode the received data with cobs
                 uint8_t received[300];
-                auto result = cobs_decode(received, 300, receivedRaw.c_str(), receivedRaw.size() - 1); // strip the last byte
+                auto result = cobs_decode(received, 300, receivedRaw.c_str(), receivedRaw.size()); // strip the last byte
+
+                Logger::format.hex();
+                if (result.status != COBS_DECODE_OK) {
+                    LOG_ERROR << "COBS status returned " << (uint8_t)result.status;
+                }
 
                 if (result.out_len < 1) {
                     // Error
@@ -173,12 +182,22 @@ void dataAcquisition() {
 
                 if (received[0] == Log) {
                     // Incoming log
-                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len);
+                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len - 2); // strip last newline
+                } else if (received[0] == SpacePacket) {
+                    // Space packet
+                    Message message = MessageParser::parseECSSTM(received + 1);
+
+                    LOG_TRACE << "Received ECSS[" << message.serviceType << "," << message.messageType << "]";
+
+                    if (message.serviceType == 3 && message.messageType == 25) {
+                        // Housekeeping received
+                        Services.housekeeping.applyHousekeeping(message);
+                    }
                 } else if (received[0] == Ping) {
-                    // Do nothing
+                        // Do nothing
                 } else {
                         Logger::format.hex();
-                        LOG_WARNING << "Unknown data received: " << received[0];
+                        LOG_WARNING << "Unknown data received: " << received[0] << " " << std::string((char*)received, result.out_len);
                 }
 
 

@@ -33,6 +33,7 @@ target_link_libraries (LinuxReceiver pthread ${Boost_LIBRARIES})
 target_link_libraries (LinuxReceiver ${ZMQ_LIBRARIES})
 target_link_libraries (LinuxReceiver common)
 set_target_properties(LinuxReceiver PROPERTIES COMPILE_DEFINITIONS LOGLEVEL_TRACE)
+set_target_properties(common PROPERTIES COMPILE_DEFINITIONS LOGLEVEL_TRACE)
 
 
 add_executable(ZMQTestReceiver zmq_test_receiver.cpp)

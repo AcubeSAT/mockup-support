@@ -18,13 +18,17 @@ void gotDatum(uint8_t datum) {
     uartQueue.push(datum);
 }
 
+AT86RF2XX at86Rf233(&hspi1);
+
+void at86_eventHandler();
+
+
 void main_cpp() {
     static uint8_t messageType;
     static uint32_t lastPingTime = HAL_GetTick();
     uartLog("Welcome\r\n");
 
     // Init AT86RF233
-    AT86RF2XX at86Rf233(&hspi1);
     at86Rf233.init();
     at86Rf233.set_chan(26);
 
@@ -39,6 +43,8 @@ void main_cpp() {
             uartSend(ping);
             lastPingTime = HAL_GetTick();
         }
+
+        at86_eventHandler();
 
         // UART queue for RX data
         if (!uartQueue.empty()) {
@@ -130,6 +136,73 @@ void uartSend(UARTMessage& message) {
     cobs_encode_result result = message.encode((char*)buffer, 256);
 
     uartSend(buffer, result.out_len);
+}
+
+void at86_receive_data() {
+    uint16_t pkt_len = at86Rf233.rx_len();
+    uint8_t str[25];
+//    std::sprintf((char *)str, "Frame length: %d bytes\r\n", pkt_len);
+//    HAL_UART_Transmit(&huart2, str, 15, 100);
+
+    /*  Print the frame, byte for byte  */
+//    std::sprintf((char *)str, "Frame dump (ASCII):\r\n");
+//    HAL_UART_Transmit(&huart2, str, 21, 100);
+    uint8_t data[pkt_len];
+    at86Rf233.rx_read(data, pkt_len, 0);
+
+    uartLog("Got some datas");
+
+    if (pkt_len > 255) {
+        uartLog("Too long pkt");
+    } else {
+        UARTMessage message = {
+                reinterpret_cast<char*>(data), static_cast<uint8_t>(pkt_len), UARTMessage::SpacePacket
+        };
+        uartSend(message);
+    }
+
+    // Encode the data in a packet
+
+
+//    for (int d = 0; d < pkt_len; d++) {
+//        uint8_t currByte = data[d];
+//        HAL_UART_Transmit(&huart2, &currByte, 1, 100);
+//    }
+
+    //    /* How many frames is this so far?  */
+    //    Serial.print("[[Total frames received: ");
+    //    Serial.print(++received);
+    //    Serial.println("]]\n");
+}
+
+
+void at86_eventHandler() {
+    /* One less event to handle! */
+    // AT86RF2XX::events--;
+
+    /* If transceiver is sleeping register access is impossible and frames are
+     * lost anyway, so return immediately.
+     */
+    uint8_t state = at86Rf233.get_status();
+    if (state == AT86RF2XX_STATE_SLEEP)
+        return;
+
+    /* read (consume) device status */
+    uint8_t irq_mask = at86Rf233.reg_read(AT86RF2XX_REG__IRQ_STATUS);
+
+    /*  Incoming radio frame! */
+    if (irq_mask & AT86RF2XX_IRQ_STATUS_MASK__RX_START) {
+        // Evt event start
+    }
+
+    /*  Done receiving radio frame; call our receive_data function.
+     */
+    if (irq_mask & AT86RF2XX_IRQ_STATUS_MASK__TRX_END) {
+        if (state == AT86RF2XX_STATE_RX_AACK_ON ||
+            state == AT86RF2XX_STATE_BUSY_RX_AACK) {
+            at86_receive_data();
+        }
+    }
 }
 
 #pragma clang diagnostic pop

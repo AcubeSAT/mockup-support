@@ -14,9 +14,9 @@ extern Parameter<uint32_t> colourPeriod;
 extern Parameter<float> colourPhase;
 
 // MPU9250 parameters
-extern Parameter<double> angleX;
-extern Parameter<double> angleY;
-extern Parameter<double> angleZ;
+extern Parameter<float> angleX;
+extern Parameter<float> angleY;
+extern Parameter<float> angleZ;
 
 // Various sensors
 extern Parameter<float> brightness;
