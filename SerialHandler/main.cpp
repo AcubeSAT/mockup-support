@@ -153,10 +153,13 @@ void dataAcquisition() {
 
                     LOG_TRACE << "Will send " << data.size() << " bytes of data. " << data[0];
 
+                    dataSendingDB = true;
                     uint8_t encoded[258];
                     auto result = cobs_encode(encoded, 257, data.c_str(), data.size());
                     encoded[result.out_len] = 0; // The null byte
                     boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
+
+                    dataSentDB = true;
                 }
 
                 boost::asio::read_until(serial, buf, '\0', ec);
@@ -190,6 +193,8 @@ void dataAcquisition() {
                     // Incoming log
                     LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len - 2); // strip last newline
                 } else if (received[0] == SpacePacket) {
+                    dataReceived = true;
+
                     // Space packet
                     Message message = MessageParser::parseECSSTM(received + 1);
 
@@ -282,7 +287,7 @@ int main(int argc, char* argv[]) {
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 
-    bool show_test_window = true;
+    bool show_test_window = false;
     ImVec4 clear_color = ImColor(35, 44, 59);
 
     while (!glfwWindowShouldClose(window)) {
@@ -324,7 +329,7 @@ int main(int argc, char* argv[]) {
         ImGui::PopStyleColor();
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
-        ImGui::Checkbox("Database", &dataSentDB);
+        ImGui::Checkbox("Serial", &dataSentDB);
         ImGui::PopStyleColor();
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.2f, 0.45f, 1.0f}));
@@ -351,11 +356,9 @@ int main(int argc, char* argv[]) {
         glVertex3f(0.0f, 1.0f, 0.0f);//top of window
         glEnd();//end drawing of line loo
     */
-        ImGui::Text("Light intensity");
-        ImGui::PlotLines("", magneticData, GRAPH_SIZE, 0, nullptr, 0, FLT_MAX,
-                         ImVec2(ImGui::GetContentRegionAvailWidth(), 80));
+//        ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
 
-        ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
 
         ImGui::Begin("Parameter Management Service");
@@ -463,6 +466,10 @@ int main(int argc, char* argv[]) {
         {
             static std::deque<float> values;
             ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25, 35, ImVec2(graphWidth,graphHeight));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(tempExternal.getValue(), values), 0, "Temperature Ext", 25, 35, ImVec2(graphWidth,graphHeight));
         }
         {
             static std::deque<float> values;
@@ -662,4 +669,6 @@ void Service::storeMessage(Message& message) {
     LOG_TRACE << ss.str();
 
     txMessages.push(message);
+
+    dataSent = true;
 }
