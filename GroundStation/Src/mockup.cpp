@@ -179,6 +179,7 @@ void at86_eventHandler() {
     if (irq_mask & AT86RF2XX_IRQ_STATUS_MASK__TRX_END) {
         if (state == AT86RF2XX_STATE_RX_AACK_ON ||
             state == AT86RF2XX_STATE_BUSY_RX_AACK) {
+            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
             at86_receive_data();
         }
     }
