@@ -534,7 +534,7 @@ int main(int argc, char* argv[]) {
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 33ms);
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 97ms);
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 351ms);
-            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 299ms);
+            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 99ms);
         }
         ImGui::End();
 
