@@ -106,6 +106,11 @@ float dataToShow[6];
  */
 std::queue<Message> txMessages;
 
+/**
+ * A queue of time points where a light update has to be sent
+ */
+std::queue<std::chrono::time_point<std::chrono::high_resolution_clock>> lightUpdateQueue;
+
 void dataAcquisition() {
     try {
         // Serial interface initialisation
@@ -286,6 +291,20 @@ int main(int argc, char* argv[]) {
         if (show_test_window) {
             ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
             ImGui::ShowTestWindow();
+        }
+
+        // Assert the lighting queue
+        if (!lightUpdateQueue.empty()) {
+            while (lightUpdateQueue.front() <= std::chrono::high_resolution_clock::now()) {
+                LOG_TRACE << "Popped item from the lighting queue";
+
+                lightUpdateQueue.pop(); // Remove the element from the queue
+
+                // Create a led strip function message
+                Message messageF(8, 1, Message::TC, 1);
+                messageF.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>("led_strip"));
+                Service::storeMessage(messageF);
+            }
         }
 
         ImGui::Begin("ASAT CubeSAT");
@@ -478,6 +497,45 @@ int main(int argc, char* argv[]) {
             ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
         }
         ImGui::PopStyleColor();
+        ImGui::End();
+
+        ImGui::Begin("LED color picker");
+        static ImVec4 color = ImVec4(114.0f/255.0f, 144.0f/255.0f, 154.0f/255.0f, 1.0f);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth());
+        ImGui::ColorPicker4("", (float*)&color,
+                ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_DisplayRGB);
+
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            LOG_INFO << "Colour changed, executing";
+
+            // Set the parameters
+            redBrightness.setCurrentValue(color.x * 255);
+            greenBrightness.setCurrentValue(color.y * 255);
+            blueBrightness.setCurrentValue(color.z * 255);
+
+            // Send the parameter update
+            Message messageP(20, 3, Message::TC, 1);
+            messageP.appendUint16(3); // Number of parameters to update
+            messageP.appendUint16(1); // Parameter ID
+            messageP.appendString(redBrightness.getValueAsString());
+            messageP.appendUint16(2); // Parameter ID
+            messageP.appendString(greenBrightness.getValueAsString());
+            messageP.appendUint16(3); // Parameter ID
+            messageP.appendString(blueBrightness.getValueAsString());
+            Service::storeMessage(messageP);
+
+            // Send the corresponding messages
+            std::queue<std::chrono::time_point<std::chrono::high_resolution_clock>> empty;
+            std::swap(lightUpdateQueue, empty); // Clears the queue
+
+
+//            lightUpdateQueue.push(std::chrono::high_resolution_clock::now());
+//            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 17ms);
+//            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 33ms);
+//            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 97ms);
+//            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 351ms);
+            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 299ms);
+        }
         ImGui::End();
 
         ImGui::Begin("Task List");
