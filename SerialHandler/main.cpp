@@ -103,6 +103,7 @@ float varAngx = 0, varAngy = 0, varAngz = 0;
 
 float dataToShow[6];
 
+
 /**
  * A queue of ECSS messages to be sent
  */
@@ -261,7 +262,7 @@ int main(int argc, char* argv[]) {
 
     std::thread dataThread(dataAcquisition);
 //    std::thread sqlThread(sqlStorage);
-
+	
     // Setup window
     glfwSetErrorCallback(error_callback);
     if (!glfwInit())
@@ -287,8 +288,8 @@ int main(int argc, char* argv[]) {
 //  ImGui::StyleColorsClassic();
     //io.Fonts->AddFontDefault();
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/kongr45gpen/repos/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/kongr45gpen/repos/mockup-support/SerialHandler/ShareTechMono-Regular.ttf", 22.0f);
+    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
+    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/ShareTechMono-Regular.ttf", 22.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
@@ -333,6 +334,8 @@ int main(int argc, char* argv[]) {
             popupOpen = false;
         }
 
+		ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_Always);
         ImGui::Begin("ASAT CubeSAT");
 
         ImGui::Checkbox("Test", &show_test_window);
@@ -382,6 +385,10 @@ int main(int argc, char* argv[]) {
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
 
+
+
+		ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
         ImGui::Begin("Parameter Management Service");
         static auto parameterList = Services.parameterManagement.getParamsList();
 
@@ -432,6 +439,9 @@ int main(int argc, char* argv[]) {
         }
         ImGui::End();
 
+
+		ImGui::SetNextWindowPos(ImVec2(20, 650), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(250, 380), ImGuiCond_Always);
         ImGui::Begin("Function Management Service");
         ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(3.0f, 0.6f, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(3.0f, 0.7f, 0.7f));
@@ -479,6 +489,9 @@ int main(int argc, char* argv[]) {
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(3);
         ImGui::End();
+
+		ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
         ImGui::Begin("Graphs");
         {
             static std::deque<float> values;
@@ -527,6 +540,9 @@ int main(int argc, char* argv[]) {
         ImGui::PopStyleColor();
         ImGui::End();
 
+
+		ImGui::SetNextWindowPos(ImVec2(290, 750), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(250, 280), ImGuiCond_Always);
         ImGui::Begin("LED color picker");
         static ImVec4 color = ImVec4(114.0f/255.0f, 144.0f/255.0f, 154.0f/255.0f, 1.0f);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth());
@@ -566,6 +582,7 @@ int main(int argc, char* argv[]) {
         }
         ImGui::End();
 
+		/*
         ImGui::Begin("Task List");
 
         ImGui::Text("FreeRTOS Task List:");
@@ -642,6 +659,7 @@ int main(int argc, char* argv[]) {
         ImGui::Separator();
 
         ImGui::End();
+		*/
 
         // Rendering
         int display_w, display_h;
