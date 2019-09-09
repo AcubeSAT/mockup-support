@@ -92,6 +92,8 @@ int calibrationValues;
 bool sqlDataPending = false;
 std::array<float, 7> sqlData;
 
+bool popupOpen = false;
+
 std::string host, username, password, database, port;
 
 zmq::context_t context(1);
@@ -226,7 +228,11 @@ void dataAcquisition() {
         }
     } catch (boost::system::system_error &e) {
         LOG_EMERGENCY << "Unable to open interface " << port << ": " << e.what();
-        exit(5);
+        if (!popupOpen) {
+            std::this_thread::sleep_for(1s);
+            ImGui::OpenPopup("Connection");
+        }
+//        exit(5);
     }
 }
 
@@ -310,6 +316,21 @@ int main(int argc, char* argv[]) {
                 messageF.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>("led_strip"));
                 Service::storeMessage(messageF);
             }
+        }
+
+        if (ImGui::BeginPopupModal("Connection", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Please plug in the Ground Station received on a USB port!");
+            ImGui::Separator();
+            ImGui::Text("After that, please restart this application.");
+
+            //static int dummy_i = 0;
+            //ImGui::Combo("Combo", &dummy_i, "Delete\0Delete harder\0");
+
+            popupOpen = true;
+            ImGui::EndPopup();
+        } else {
+            popupOpen = false;
         }
 
         ImGui::Begin("ASAT CubeSAT");
