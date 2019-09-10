@@ -1,7 +1,6 @@
 #include <iostream>
 
 
-
 #include <chrono>
 #include <thread>
 #include <boost/asio.hpp>
@@ -42,13 +41,13 @@ static void error_callback(int error, const char *description) {
 
 // FreeRTOS defines
 enum eTaskState {
-    eRunning = 0,	/* A task is querying the state of itself, so must be running. */
-	eReady,			/* The task being queried is in a read or pending ready list. */
-	eBlocked,		/* The task being queried is in the Blocked state. */
-	eSuspended,		/* The task being queried is in the Suspended state, or is in the Blocked state with an infinite time out. */
-	eDeleted,		/* The task being queried has been deleted, but its TCB has not yet been freed. */
-	eInvalid
- };
+    eRunning = 0,    /* A task is querying the state of itself, so must be running. */
+    eReady,            /* The task being queried is in a read or pending ready list. */
+    eBlocked,        /* The task being queried is in the Blocked state. */
+    eSuspended,        /* The task being queried is in the Suspended state, or is in the Blocked state with an infinite time out. */
+    eDeleted,        /* The task being queried has been deleted, but its TCB has not yet been freed. */
+    eInvalid
+};
 
 struct TaskInfo {
     unsigned int id;
@@ -169,21 +168,22 @@ void dataAcquisition() {
                 Logger::format.decimal();
 //                LOG_TRACE << "Read " << buf.size() << " bytes of data";
 
-                std::string receivedAll(reinterpret_cast<const char*>(buf.data().data()), buf.size());
+                std::string receivedAll(reinterpret_cast<const char *>(buf.data().data()), buf.size());
 
                 // Find the first occurence of a zero
                 size_t zeroLocation = receivedAll.find('\0');
-                std::string receivedRaw(reinterpret_cast<const char*>(buf.data().data()), zeroLocation);
+                std::string receivedRaw(reinterpret_cast<const char *>(buf.data().data()), zeroLocation);
                 buf.consume(zeroLocation + 1);
 
 
                 // Decode the received data with cobs
                 uint8_t received[300];
-                auto result = cobs_decode(received, 300, receivedRaw.c_str(), receivedRaw.size()); // strip the last byte
+                auto result = cobs_decode(received, 300, receivedRaw.c_str(),
+                                          receivedRaw.size()); // strip the last byte
 
                 Logger::format.hex();
                 if (result.status != COBS_DECODE_OK) {
-                    LOG_ERROR << "COBS status returned " << (uint8_t)result.status;
+                    LOG_ERROR << "COBS status returned " << (uint8_t) result.status;
                 }
 
                 if (result.out_len < 1) {
@@ -194,7 +194,8 @@ void dataAcquisition() {
 
                 if (received[0] == Log) {
                     // Incoming log
-                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char*>(received + 1), result.out_len - 2); // strip last newline
+                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char *>(received + 1),
+                                                              result.out_len - 2); // strip last newline
                 } else if (received[0] == SpacePacket) {
                     dataReceived = true;
 
@@ -208,10 +209,11 @@ void dataAcquisition() {
                         Services.housekeeping.applyHousekeeping(message);
                     }
                 } else if (received[0] == Ping) {
-                        // Do nothing
+                    // Do nothing
                 } else {
-                        Logger::format.hex();
-                        LOG_WARNING << "Unknown data received: " << received[0] << " " << std::string((char*)received, result.out_len);
+                    Logger::format.hex();
+                    LOG_WARNING << "Unknown data received: " << received[0] << " "
+                                << std::string((char *) received, result.out_len);
                 }
 
 
@@ -238,11 +240,12 @@ void dataAcquisition() {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     LOG_NOTICE << "Starting";
 
     if (argc != 2) {
-        std::cerr << "You have not specified the serial interface to use. Usage: ./LinuxReceiver [/dev/ttyACM0]" << std::endl;
+        std::cerr << "You have not specified the serial interface to use. Usage: ./LinuxReceiver [/dev/ttyACM0]"
+                  << std::endl;
         return 5;
     }
     port = argv[1];
@@ -262,7 +265,7 @@ int main(int argc, char* argv[]) {
 
     std::thread dataThread(dataAcquisition);
 //    std::thread sqlThread(sqlStorage);
-	
+
     // Setup window
     glfwSetErrorCallback(error_callback);
     if (!glfwInit())
@@ -289,7 +292,7 @@ int main(int argc, char* argv[]) {
     //io.Fonts->AddFontDefault();
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
     imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/ShareTechMono-Regular.ttf", 22.0f);
+    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/ShareTechMono-Regular.ttf",22.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
@@ -319,8 +322,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (ImGui::BeginPopupModal("Connection", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-        {
+        if (ImGui::BeginPopupModal("Connection", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Please plug in the Ground Station received on a USB port!");
             ImGui::Separator();
             ImGui::Text("After that, please restart this application.");
@@ -334,8 +336,8 @@ int main(int argc, char* argv[]) {
             popupOpen = false;
         }
 
-		ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_Always);
         ImGui::Begin("ASAT CubeSAT");
 
         ImGui::Checkbox("Test", &show_test_window);
@@ -382,23 +384,23 @@ int main(int argc, char* argv[]) {
     */
 //        ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
 
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                    ImGui::GetIO().Framerate);
         ImGui::End();
 
 
-
-		ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
         ImGui::Begin("Parameter Management Service");
         static auto parameterList = Services.parameterManagement.getParamsList();
 
-        ImFont* font = ImGui::GetIO().Fonts->Fonts[1];
+        ImFont *font = ImGui::GetIO().Fonts->Fonts[1];
 
         for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
             if (parIdToString.find(it->first) == parIdToString.end()) continue;
 
 //            ImGui::Text("%s", parIdToString[it->first].data());
-            ParameterBase* parameter = (it->second);
+            ParameterBase *parameter = (it->second);
 
             ImGui::PushID(it->first);
 
@@ -419,17 +421,16 @@ int main(int argc, char* argv[]) {
             ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 200);
 
             ImGui::PushFont(font);
-            if (dynamic_cast<Parameter<uint8_t>*>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_U8,     parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<uint32_t>*>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_U32,     parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<float>*>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_Float,     parameter->ptr(), 0.001);
-            } else if (dynamic_cast<Parameter<double>*>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(),        ImGuiDataType_Double,     parameter->ptr(), 0.001);
+            if (dynamic_cast<Parameter<uint8_t> *>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U8, parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<uint32_t> *>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 1);
+            } else if (dynamic_cast<Parameter<float> *>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001);
+            } else if (dynamic_cast<Parameter<double> *>(parameter) != nullptr) {
+                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001);
             }
             ImGui::PopFont();
-
 
 
             ImGui::PopItemWidth();
@@ -440,19 +441,19 @@ int main(int argc, char* argv[]) {
         ImGui::End();
 
 
-		ImGui::SetNextWindowPos(ImVec2(20, 650), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(250, 380), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(20, 650), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(250, 380), ImGuiCond_Always);
         ImGui::Begin("Function Management Service");
-        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(3.0f, 0.6f, 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(3.0f, 0.7f, 0.7f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(3.0f, 0.8f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(3.0f, 0.6f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(3.0f, 0.7f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(3.0f, 0.8f, 0.8f));
         ImGui::PushItemWidth(ImGui::GetWindowWidth());
         ImGui::PushFont(font);
 
-        static FunctionMap & functionMap = Services.functionManagement.getFunctionMap();
+        static FunctionMap &functionMap = Services.functionManagement.getFunctionMap();
 
         for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
-            if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(),0})) {
+            if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(), 0})) {
                 auto name = it->first;
                 LOG_DEBUG << "Creating _" << name.c_str() << "_ function call";
 
@@ -472,7 +473,8 @@ int main(int argc, char* argv[]) {
         static constexpr int graphHeight = 110;
         float tempStorage[graphSize];
 
-        std::function<int(float,std::deque<float>&)> addToGraph = [&tempStorage](float value, std::deque<float> & values) {
+        std::function<int(float, std::deque<float> &)> addToGraph = [&tempStorage](float value,
+                                                                                   std::deque<float> &values) {
             values.push_back(value);
             if (values.size() > graphSize) {
                 values.pop_front();
@@ -490,64 +492,74 @@ int main(int argc, char* argv[]) {
         ImGui::PopStyleColor(3);
         ImGui::End();
 
-		ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
         ImGui::Begin("Graphs");
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(),0.3), values), 0, "Brightness", 0, pow(10000.0f,0.3), ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(), 0.3), values), 0, "Brightness", 0,
+                             pow(10000.0f, 0.3), ImVec2(graphWidth, graphHeight));
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25, 35, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25, 35,
+                             ImVec2(graphWidth, graphHeight));
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(tempExternal.getValue(), values), 0, "Temperature Ext", 25, 35, ImVec2(graphWidth,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(tempExternal.getValue(), values), 0, "Temperature Ext", 25, 35,
+                             ImVec2(graphWidth, graphHeight));
         }
         {
             static std::deque<float> values;
 //            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Temperature Ext", 0, 60000.0f, ImVec2(0,80));
         }
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor::HSV(3.0f, 0.5f, 0.5f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4) ImColor::HSV(3.0f, 0.5f, 0.5f, 0.6f));
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
         }
         ImGui::SameLine();
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroX.getValue(), values), 0, "Gyro X", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroX.getValue(), values), 0, "Gyro X", -3, 3,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
         }
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
-        }
-        ImGui::SameLine();
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroY.getValue(), values), 0, "Gyro Y", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
-        }
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -180, 180, ImVec2(graphWidth/2.0 - 4,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -180, 180,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
         }
         ImGui::SameLine();
         {
             static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3, ImVec2(graphWidth/2.0 - 4,graphHeight));
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroY.getValue(), values), 0, "Gyro Y", -3, 3,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
+        }
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -180, 180,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
+        }
+        ImGui::SameLine();
+        {
+            static std::deque<float> values;
+            ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3,
+                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
         }
         ImGui::PopStyleColor();
         ImGui::End();
 
 
-		ImGui::SetNextWindowPos(ImVec2(290, 750), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(250, 280), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(290, 750), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(250, 280), ImGuiCond_Always);
         ImGui::Begin("LED color picker");
-        static ImVec4 color = ImVec4(114.0f/255.0f, 144.0f/255.0f, 154.0f/255.0f, 1.0f);
+        static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 1.0f);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth());
-        ImGui::ColorPicker4("", (float*)&color,
-                ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_DisplayRGB);
+        ImGui::ColorPicker4("", (float *) &color,
+                            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview |
+                            ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_DisplayRGB);
 
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             LOG_INFO << "Colour changed, executing";
@@ -582,7 +594,7 @@ int main(int argc, char* argv[]) {
         }
         ImGui::End();
 
-		/*
+        /*
         ImGui::Begin("Task List");
 
         ImGui::Text("FreeRTOS Task List:");
@@ -659,7 +671,7 @@ int main(int argc, char* argv[]) {
         ImGui::Separator();
 
         ImGui::End();
-		*/
+        */
 
         // Rendering
         int display_w, display_h;
@@ -687,7 +699,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void Service::storeMessage(Message& message) {
+void Service::storeMessage(Message &message) {
     // appends the remaining bits to complete a byte
     message.finalize();
 
