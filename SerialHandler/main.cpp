@@ -300,8 +300,12 @@ int main(int argc, char *argv[]) {
 //  ImGui::StyleColorsClassic();
     //io.Fonts->AddFontDefault();
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/lib/imgui/misc/fonts/DroidSans.ttf", 16.0f);
-    imguiIo.Fonts->AddFontFromFileTTF("/home/dimitris/repos/obc/mockup-support/SerialHandler/ShareTechMono-Regular.ttf",22.0f);
+
+    std::string directory = __FILE__;
+    directory.erase(directory.end() - 9, directory.end());
+
+    imguiIo.Fonts->AddFontFromFileTTF((directory + "/lib/imgui/misc/fonts/DroidSans.ttf").c_str(), 16.0f);
+    imguiIo.Fonts->AddFontFromFileTTF((directory + "/ShareTechMono-Regular.ttf").c_str(), 22.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 13.0f);
 //    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
