@@ -441,9 +441,9 @@ int main(int argc, char *argv[]) {
                 } else if (dynamic_cast<Parameter<uint32_t> *>(parameter) != nullptr) {
                     ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 1);
                 } else if (dynamic_cast<Parameter<float> *>(parameter) != nullptr) {
-                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001);
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001, nullptr, nullptr, "%.3f");
                 } else if (dynamic_cast<Parameter<double> *>(parameter) != nullptr) {
-                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001);
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001, nullptr, nullptr, "%.3f");
                 }
                 ImGui::PopFont();
 
