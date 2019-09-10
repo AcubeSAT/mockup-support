@@ -92,6 +92,7 @@ bool sqlDataPending = false;
 std::array<float, 7> sqlData;
 
 bool popupOpen = false;
+bool ImguiStarted = false;
 
 std::string host, username, password, database, port;
 
@@ -101,7 +102,6 @@ zmq::socket_t publisher(context, ZMQ_PUB);
 float varAngx = 0, varAngy = 0, varAngz = 0;
 
 float dataToShow[6];
-
 
 /**
  * A queue of ECSS messages to be sent
@@ -113,27 +113,39 @@ std::queue<Message> txMessages;
  */
 std::queue<std::chrono::time_point<std::chrono::high_resolution_clock>> lightUpdateQueue;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+
 void dataAcquisition() {
-    try {
-        // Serial interface initialisation
-        boost::asio::io_service io;
-        boost::asio::serial_port serial(io, port);
-        serial.set_option(boost::asio::serial_port_base::baud_rate(115200));
+    while (!stop) {
+        std::this_thread::sleep_for(500ms);
+        LOG_INFO << "Starting data acquisition thread";
 
-        boost::asio::streambuf buf;
-        std::istream is(&buf);
-        std::istringstream iss;
+        try {
+            // Serial interface initialisation
+            boost::asio::io_service io;
+            boost::asio::serial_port serial(io, port);
+            serial.set_option(boost::asio::serial_port_base::baud_rate(115200));
 
-        std::string line;
-        boost::system::error_code ec;
+            boost::asio::streambuf buf;
+            std::istream is(&buf);
+            std::istringstream iss;
 
-        LOG_INFO << "Connection successful";
+            std::string line;
+            boost::system::error_code ec;
 
-        // Time when the last MySQL data was sent; used to prevent too frequent updates
+            LOG_INFO << "Connection successful";
+
+            if (popupOpen && ImguiStarted) {
+                // Close the popup
+                popupOpen = false;
+            }
+
+            // Time when the last MySQL data was sent; used to prevent too frequent updates
 //        std::chrono::steady_clock::time_point last_update = std::chrono::steady_clock::now();
 //        std::chrono::steady_clock::time_point last_zmq_update = std::chrono::steady_clock::now();
-        while (!stop) {
-            try {
+            while (!stop) {
+                try {
 //                if (pendingCommand != 0) {
 //                    // Send pending command to arduino
 //                    std::ostringstream oss;
@@ -143,101 +155,107 @@ void dataAcquisition() {
 //                    pendingCommand = 0;
 //                }
 
-                //TODO: Parallelism fixes
-                if (!txMessages.empty()) {
-                    Message message = txMessages.back();
-                    txMessages.pop();
+                    //TODO: Parallelism fixes
+                    if (!txMessages.empty()) {
+                        Message message = txMessages.back();
+                        txMessages.pop();
 
-                    auto data = MessageParser::composeECSS(message);
+                        auto data = MessageParser::composeECSS(message);
 
-                    // Now encode the data via COBS
-                    data.insert(data.begin(), static_cast<uint8_t>(MessageType::SpacePacket)); // Append packet type
+                        // Now encode the data via COBS
+                        data.insert(data.begin(), static_cast<uint8_t>(MessageType::SpacePacket)); // Append packet type
 
-                    LOG_TRACE << "Will send " << data.size() << " bytes of data. " << data[0];
+                        LOG_TRACE << "Will send " << data.size() << " bytes of data. " << data[0];
 
-                    dataSendingDB = true;
-                    uint8_t encoded[258];
-                    auto result = cobs_encode(encoded, 257, data.c_str(), data.size());
-                    encoded[result.out_len] = 0; // The null byte
-                    boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
+                        dataSendingDB = true;
+                        uint8_t encoded[258];
+                        auto result = cobs_encode(encoded, 257, data.c_str(), data.size());
+                        encoded[result.out_len] = 0; // The null byte
+                        boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
 
-                    dataSentDB = true;
-                }
+                        dataSentDB = true;
+                    }
 
-                boost::asio::read_until(serial, buf, '\0', ec);
-                Logger::format.decimal();
+                    boost::asio::read_until(serial, buf, '\0', ec);
+                    Logger::format.decimal();
 //                LOG_TRACE << "Read " << buf.size() << " bytes of data";
 
-                std::string receivedAll(reinterpret_cast<const char *>(buf.data().data()), buf.size());
+                    std::string receivedAll(reinterpret_cast<const char *>(buf.data().data()), buf.size());
 
-                // Find the first occurence of a zero
-                size_t zeroLocation = receivedAll.find('\0');
-                std::string receivedRaw(reinterpret_cast<const char *>(buf.data().data()), zeroLocation);
-                buf.consume(zeroLocation + 1);
+                    // Find the first occurence of a zero
+                    size_t zeroLocation = receivedAll.find('\0');
+                    std::string receivedRaw(reinterpret_cast<const char *>(buf.data().data()), zeroLocation);
+                    buf.consume(zeroLocation + 1);
 
 
-                // Decode the received data with cobs
-                uint8_t received[300];
-                auto result = cobs_decode(received, 300, receivedRaw.c_str(),
-                                          receivedRaw.size()); // strip the last byte
+                    // Decode the received data with cobs
+                    uint8_t received[300];
+                    auto result = cobs_decode(received, 300, receivedRaw.c_str(),
+                                              receivedRaw.size()); // strip the last byte
 
-                Logger::format.hex();
-                if (result.status != COBS_DECODE_OK) {
-                    LOG_ERROR << "COBS status returned " << (uint8_t) result.status;
-                }
-
-                if (result.out_len < 1) {
-                    // Error
-                    LOG_WARNING << "Too small packet received";
-                    continue;
-                }
-
-                if (received[0] == Log) {
-                    // Incoming log
-                    LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char *>(received + 1),
-                                                              result.out_len - 2); // strip last newline
-                } else if (received[0] == SpacePacket) {
-                    dataReceived = true;
-
-                    // Space packet
-                    Message message = MessageParser::parseECSSTM(received + 1);
-
-                    LOG_TRACE << "Received ECSS[" << message.serviceType << "," << message.messageType << "]";
-
-                    if (message.serviceType == 3 && message.messageType == 25) {
-                        // Housekeeping received
-                        Services.housekeeping.applyHousekeeping(message);
-                    }
-                } else if (received[0] == Ping) {
-                    // Do nothing
-                } else {
                     Logger::format.hex();
-                    LOG_WARNING << "Unknown data received: " << received[0] << " "
-                                << std::string((char *) received, result.out_len);
-                }
+                    if (result.status != COBS_DECODE_OK) {
+                        LOG_ERROR << "COBS status returned " << (uint8_t) result.status;
+                    }
+
+                    if (result.out_len < 1) {
+                        // Error
+                        LOG_WARNING << "Too small packet received";
+                        continue;
+                    }
+
+                    if (received[0] == Log) {
+                        // Incoming log
+                        LOG_TRACE << "[inc. log] " << std::string(reinterpret_cast<char *>(received + 1),
+                                                                  result.out_len - 2); // strip last newline
+                    } else if (received[0] == SpacePacket) {
+                        dataReceived = true;
+
+                        // Space packet
+                        Message message = MessageParser::parseECSSTM(received + 1);
+
+                        LOG_TRACE << "Received ECSS[" << message.serviceType << "," << message.messageType << "]";
+
+                        if (message.serviceType == 3 && message.messageType == 25) {
+                            // Housekeeping received
+                            Services.housekeeping.applyHousekeeping(message);
+                        }
+                    } else if (received[0] == Ping) {
+                        // Do nothing
+                    } else {
+                        Logger::format.hex();
+                        LOG_WARNING << "Unknown data received: " << received[0] << " "
+                                    << std::string((char *) received, result.out_len);
+                    }
 
 
 
 //                    float norm = sqrtf(powf(valMagx, 2) + powf(valMagy, 2) + powf(valMagz, 2));
 
-                //valMagz *= 100;
-                //valPressure *= 100;
-                //valBat *= 100;
+                    //valMagz *= 100;
+                    //valPressure *= 100;
+                    //valBat *= 100;
 
 //        serial.close();
-            } catch (boost::system::system_error &e) {
-                LOG_ERROR << "UART error: " << e.what();
+                } catch (boost::system::system_error &e) {
+                    LOG_ERROR << "UART error: " << e.what();
+                }
             }
-        }
-    } catch (boost::system::system_error &e) {
-        LOG_EMERGENCY << "Unable to open interface " << port << ": " << e.what();
-        if (!popupOpen) {
-            std::this_thread::sleep_for(1s);
-            ImGui::OpenPopup("Connection");
-        }
+        } catch (boost::system::system_error &e) {
+            LOG_EMERGENCY << "Unable to open interface " << port << ": " << e.what();
+            if (!popupOpen && ImguiStarted) {
+                popupOpen = true;
+                ImGui::OpenPopup("Connection");
+            }
 //        exit(5);
+        } catch (...) {
+            std::string exception = typeid(std::current_exception()).name();
+            LOG_EMERGENCY << "Unhandled exception in data acquisition thread: " << exception;
+        }
     }
 }
+
+#pragma clang diagnostic pop
 
 
 int main(int argc, char *argv[]) {
@@ -249,15 +267,6 @@ int main(int argc, char *argv[]) {
         return 5;
     }
     port = argv[1];
-
-//    std::ifstream infile;
-//    infile.open("config");
-//    if (!infile.is_open()) {
-//        std::cerr << "Please create a config file with: host username password database serialport" << std::endl;
-//        return 5;
-//    }
-//    infile >> host >> username >> password >> database >> port;
-//    infile.close();
 
     publisher.bind("tcp://*:5556");
 
@@ -300,289 +309,296 @@ int main(int argc, char *argv[]) {
     bool show_test_window = false;
     ImVec4 clear_color = ImColor(35, 44, 59);
 
+    ImguiStarted = true;
+
     while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        ImGui_ImplGlfwGL3_NewFrame();
-        if (show_test_window) {
-            ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
-            ImGui::ShowTestWindow();
-        }
-
-        // Assert the lighting queue
-        if (!lightUpdateQueue.empty()) {
-            while (lightUpdateQueue.front() <= std::chrono::high_resolution_clock::now()) {
-                LOG_TRACE << "Popped item from the lighting queue";
-
-                lightUpdateQueue.pop(); // Remove the element from the queue
-
-                // Create a led strip function message
-                Message messageF(8, 1, Message::TC, 1);
-                messageF.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>("led_strip"));
-                Service::storeMessage(messageF);
+        try {
+            glfwPollEvents();
+            ImGui_ImplGlfwGL3_NewFrame();
+            if (show_test_window) {
+                ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
+                ImGui::ShowTestWindow();
             }
-        }
 
-        if (ImGui::BeginPopupModal("Connection", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Please plug in the Ground Station received on a USB port!");
-            ImGui::Separator();
-            ImGui::Text("After that, please restart this application.");
+            // Assert the lighting queue
+            if (!lightUpdateQueue.empty()) {
+                while (lightUpdateQueue.front() <= std::chrono::high_resolution_clock::now()) {
+                    LOG_TRACE << "Popped item from the lighting queue";
 
-            //static int dummy_i = 0;
-            //ImGui::Combo("Combo", &dummy_i, "Delete\0Delete harder\0");
+                    lightUpdateQueue.pop(); // Remove the element from the queue
 
-            popupOpen = true;
-            ImGui::EndPopup();
-        } else {
-            popupOpen = false;
-        }
+                    // Create a led strip function message
+                    Message messageF(8, 1, Message::TC, 1);
+                    messageF.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>("led_strip"));
+                    Service::storeMessage(messageF);
+                }
+            }
 
-        ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_Always);
-        ImGui::Begin("ASAT CubeSAT");
+            if (ImGui::BeginPopupModal("Connection", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("Error in communication with AcubeSAT ground station.");
+                ImGui::Separator();
+                ImGui::Text("Please connect the receiver (port %s).", port.c_str());
 
-        ImGui::Checkbox("Test", &show_test_window);
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.1f, 0.9f, 0.05f, 1.0f}));
-        ImGui::Checkbox("", &dataReceived);
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.3f, 0.05f, 1.0f}));
-        ImGui::Checkbox("Data", &dataSent);
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.2f, 0.05f, 1.0f}));
-        ImGui::Checkbox("", &dataSendingDB);
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
-        ImGui::Checkbox("Serial", &dataSentDB);
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.2f, 0.45f, 1.0f}));
-        ImGui::Checkbox("", &dataSendingZMQ);
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.4f, 0.45f, 1.0f}));
-        ImGui::Checkbox("ZeroMQ", &dataSentZMQ);
-        ImGui::PopStyleColor();
+                //static int dummy_i = 0;
+                //ImGui::Combo("Combo", &dummy_i, "Delete\0Delete harder\0");
 
-        // Reset indicators so that they light up just for one frame
-        dataReceived = dataSent = false;
-        if (dataSentDB) dataSendingDB = false;
-        if (dataSentZMQ) dataSendingZMQ = false;
-        dataSentDB = false;
-        dataSentZMQ = false;
-        noiseGateActivated = {false, false, false};
+                if (!popupOpen) {
+                    ImGui::CloseCurrentPopup();
+                }
 
-        /*
-        glBegin(GL_LINE_LOOP);//start drawing a line loop
-        glVertex3f(-1.0f, 0.0f, 0.0f);//left of window
-        glVertex3f(0.0f, -1.0f, 0.0f);//bottom of window
-        glVertex3f(1.0f, 0.0f, 0.0f);//right of window
-        glVertex3f(0.0f, 1.0f, 0.0f);//top of window
-        glEnd();//end drawing of line loo
-    */
+                ImGui::EndPopup();
+            } else {
+                popupOpen = false;
+            }
+
+            ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_Always);
+            ImGui::Begin("ASAT CubeSAT");
+
+            ImGui::Checkbox("Test", &show_test_window);
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.1f, 0.9f, 0.05f, 1.0f}));
+            ImGui::Checkbox("", &dataReceived);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.3f, 0.05f, 1.0f}));
+            ImGui::Checkbox("Data", &dataSent);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.2f, 0.05f, 1.0f}));
+            ImGui::Checkbox("", &dataSendingDB);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
+            ImGui::Checkbox("Serial", &dataSentDB);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.2f, 0.45f, 1.0f}));
+            ImGui::Checkbox("", &dataSendingZMQ);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.4f, 0.45f, 1.0f}));
+            ImGui::Checkbox("ZeroMQ", &dataSentZMQ);
+            ImGui::PopStyleColor();
+
+            // Reset indicators so that they light up just for one frame
+            dataReceived = dataSent = false;
+            if (dataSentDB) dataSendingDB = false;
+            if (dataSentZMQ) dataSendingZMQ = false;
+            dataSentDB = false;
+            dataSentZMQ = false;
+            noiseGateActivated = {false, false, false};
+
+            /*
+            glBegin(GL_LINE_LOOP);//start drawing a line loop
+            glVertex3f(-1.0f, 0.0f, 0.0f);//left of window
+            glVertex3f(0.0f, -1.0f, 0.0f);//bottom of window
+            glVertex3f(1.0f, 0.0f, 0.0f);//right of window
+            glVertex3f(0.0f, 1.0f, 0.0f);//top of window
+            glEnd();//end drawing of line loo
+        */
 //        ImGui::Checkbox("Enable ZeroMQ Data Transmission", &zmqEnabled);
 
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-                    ImGui::GetIO().Framerate);
-        ImGui::End();
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                        ImGui::GetIO().Framerate);
+            ImGui::End();
 
+            ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
+            ImGui::Begin("Parameter Management Service");
+            static auto parameterList = Services.parameterManagement.getParamsList();
 
-        ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
-        ImGui::Begin("Parameter Management Service");
-        static auto parameterList = Services.parameterManagement.getParamsList();
+            ImFont *font = ImGui::GetIO().Fonts->Fonts[1];
 
-        ImFont *font = ImGui::GetIO().Fonts->Fonts[1];
-
-        for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
-            if (parIdToString.find(it->first) == parIdToString.end()) continue;
+            for (auto it = parameterList.begin(); it != parameterList.end(); it++) {
+                if (parIdToString.find(it->first) == parIdToString.end()) continue;
 
 //            ImGui::Text("%s", parIdToString[it->first].data());
-            ParameterBase *parameter = (it->second);
+                ParameterBase *parameter = (it->second);
 
-            ImGui::PushID(it->first);
+                ImGui::PushID(it->first);
 
-            if (ImGui::Button("Update", {100, 0})) {
-                Logger::format.decimal();
-                LOG_DEBUG << "Got call to update parameter _" << parIdToString[it->first] << "_ [" << it->first << "]";
+                if (ImGui::Button("Update", {100, 0})) {
+                    Logger::format.decimal();
+                    LOG_DEBUG << "Got call to update parameter _" << parIdToString[it->first] << "_ [" << it->first
+                              << "]";
 
-                Message message(20, 3, Message::TC, 1);
-                message.appendUint16(1); // Number of parameters to update
-                message.appendUint16(it->first); // Parameter ID
-                message.appendString(it->second->getValueAsString());
+                    Message message(20, 3, Message::TC, 1);
+                    message.appendUint16(1); // Number of parameters to update
+                    message.appendUint16(it->first); // Parameter ID
+                    message.appendString(it->second->getValueAsString());
 
-                LOG_TRACE << "New message with size " << message.dataSize;
-                Service::storeMessage(message);
-            }
+                    LOG_TRACE << "New message with size " << message.dataSize;
+                    Service::storeMessage(message);
+                }
 
-            ImGui::SameLine();
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 200);
+                ImGui::SameLine();
+                ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth() - 200);
 
-            ImGui::PushFont(font);
-            if (dynamic_cast<Parameter<uint8_t> *>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U8, parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<uint32_t> *>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 1);
-            } else if (dynamic_cast<Parameter<float> *>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001);
-            } else if (dynamic_cast<Parameter<double> *>(parameter) != nullptr) {
-                ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001);
-            }
-            ImGui::PopFont();
+                ImGui::PushFont(font);
+                if (dynamic_cast<Parameter<uint8_t> *>(parameter) != nullptr) {
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U8, parameter->ptr(), 1);
+                } else if (dynamic_cast<Parameter<uint32_t> *>(parameter) != nullptr) {
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 1);
+                } else if (dynamic_cast<Parameter<float> *>(parameter) != nullptr) {
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001);
+                } else if (dynamic_cast<Parameter<double> *>(parameter) != nullptr) {
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001);
+                }
+                ImGui::PopFont();
 
 
-            ImGui::PopItemWidth();
-            ImGui::PopID();
+                ImGui::PopItemWidth();
+                ImGui::PopID();
 
 //            ImGui::NewLine();
-        }
-        ImGui::End();
-
-
-        ImGui::SetNextWindowPos(ImVec2(20, 650), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(250, 380), ImGuiCond_Always);
-        ImGui::Begin("Function Management Service");
-        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(3.0f, 0.6f, 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(3.0f, 0.7f, 0.7f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(3.0f, 0.8f, 0.8f));
-        ImGui::PushItemWidth(ImGui::GetWindowWidth());
-        ImGui::PushFont(font);
-
-        static FunctionMap &functionMap = Services.functionManagement.getFunctionMap();
-
-        for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
-            if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(), 0})) {
-                auto name = it->first;
-                LOG_DEBUG << "Creating _" << name.c_str() << "_ function call";
-
-                // Create a new message
-                Message message(8, 1, Message::TC, 1);
-                message.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>(name));
-                LOG_TRACE << "New message with size " << message.dataSize;
-                Service::storeMessage(message);
             }
-        }
+            ImGui::End();
+
+            ImGui::SetNextWindowPos(ImVec2(20, 650), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(250, 380), ImGuiCond_Always);
+            ImGui::Begin("Function Management Service");
+            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(3.0f, 0.6f, 0.6f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(3.0f, 0.7f, 0.7f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(3.0f, 0.8f, 0.8f));
+            ImGui::PushItemWidth(ImGui::GetWindowWidth());
+            ImGui::PushFont(font);
+
+            static FunctionMap &functionMap = Services.functionManagement.getFunctionMap();
+
+            for (auto it = functionMap.begin(); it != functionMap.end(); it++) {
+                if (ImGui::Button((*it).first.c_str(), {ImGui::GetContentRegionAvailWidth(), 0})) {
+                    auto name = it->first;
+                    LOG_DEBUG << "Creating _" << name.c_str() << "_ function call";
+
+                    // Create a new message
+                    Message message(8, 1, Message::TC, 1);
+                    message.appendFixedString(String<ECSS_FUNCTION_NAME_LENGTH>(name));
+                    LOG_TRACE << "New message with size " << message.dataSize;
+                    Service::storeMessage(message);
+                }
+            }
 
 
 //        static std::map<int, std::queue<float>> values;
 
-        static constexpr size_t graphSize = 500;
-        static constexpr int graphWidth = 500;
-        static constexpr int graphHeight = 110;
-        float tempStorage[graphSize];
+            static constexpr size_t graphSize = 500;
+            static constexpr int graphWidth = 500;
+            static constexpr int graphHeight = 110;
+            float tempStorage[graphSize];
 
-        std::function<int(float, std::deque<float> &)> addToGraph = [&tempStorage](float value,
-                                                                                   std::deque<float> &values) {
-            values.push_back(value);
-            if (values.size() > graphSize) {
-                values.pop_front();
+            std::function<int(float, std::deque<float> &)> addToGraph = [&tempStorage](float value,
+                                                                                       std::deque<float> &values) {
+                values.push_back(value);
+                if (values.size() > graphSize) {
+                    values.pop_front();
+                }
+
+                for (int i = 0; i < values.size(); i++) {
+                    *(tempStorage + i) = values[i];
+                }
+
+                return values.size();
+            };
+
+            ImGui::PopFont();
+            ImGui::PopItemWidth();
+            ImGui::PopStyleColor(3);
+            ImGui::End();
+
+            ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
+            ImGui::Begin("Graphs");
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(), 0.3), values), 0, "Brightness",
+                                 0,
+                                 pow(10000.0f, 0.3), ImVec2(graphWidth, graphHeight));
             }
-
-            for (int i = 0; i < values.size(); i++) {
-                *(tempStorage + i) = values[i];
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25,
+                                 35,
+                                 ImVec2(graphWidth, graphHeight));
             }
-
-            return values.size();
-        };
-
-        ImGui::PopFont();
-        ImGui::PopItemWidth();
-        ImGui::PopStyleColor(3);
-        ImGui::End();
-
-        ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
-        ImGui::Begin("Graphs");
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(), 0.3), values), 0, "Brightness", 0,
-                             pow(10000.0f, 0.3), ImVec2(graphWidth, graphHeight));
-        }
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(tempInternal.getValue(), values), 0, "Temperature Int", 25, 35,
-                             ImVec2(graphWidth, graphHeight));
-        }
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(tempExternal.getValue(), values), 0, "Temperature Ext", 25, 35,
-                             ImVec2(graphWidth, graphHeight));
-        }
-        {
-            static std::deque<float> values;
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(tempExternal.getValue(), values), 0, "Temperature Ext", 25,
+                                 35,
+                                 ImVec2(graphWidth, graphHeight));
+            }
+            {
+                static std::deque<float> values;
 //            ImGui::PlotLines("", tempStorage, addToGraph(brightness.getValue(), values), 0, "Temperature Ext", 0, 60000.0f, ImVec2(0,80));
-        }
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4) ImColor::HSV(3.0f, 0.5f, 0.5f, 0.6f));
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        ImGui::SameLine();
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroX.getValue(), values), 0, "Gyro X", -3, 3,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -180, 180,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        ImGui::SameLine();
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroY.getValue(), values), 0, "Gyro Y", -3, 3,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -180, 180,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        ImGui::SameLine();
-        {
-            static std::deque<float> values;
-            ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3,
-                             ImVec2(graphWidth / 2.0 - 4, graphHeight));
-        }
-        ImGui::PopStyleColor();
-        ImGui::End();
+            }
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4) ImColor::HSV(3.0f, 0.5f, 0.5f, 0.6f));
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(angleX.getValue(), values), 0, "Euler X", -180, 180,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            ImGui::SameLine();
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(gyroX.getValue(), values), 0, "Gyro X", -3, 3,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(angleY.getValue(), values), 0, "Euler Y", -180, 180,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            ImGui::SameLine();
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(gyroY.getValue(), values), 0, "Gyro Y", -3, 3,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(angleZ.getValue(), values), 0, "Euler Z", -180, 180,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            ImGui::SameLine();
+            {
+                static std::deque<float> values;
+                ImGui::PlotLines("", tempStorage, addToGraph(gyroZ.getValue(), values), 0, "Gyro Z", -3, 3,
+                                 ImVec2(graphWidth / 2.0 - 4, graphHeight));
+            }
+            ImGui::PopStyleColor();
+            ImGui::End();
 
+            ImGui::SetNextWindowPos(ImVec2(290, 750), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(250, 280), ImGuiCond_Always);
+            ImGui::Begin("LED color picker");
+            static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 1.0f);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth());
+            ImGui::ColorPicker4("", (float *) &color,
+                                ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview |
+                                ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_DisplayRGB);
 
-        ImGui::SetNextWindowPos(ImVec2(290, 750), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(250, 280), ImGuiCond_Always);
-        ImGui::Begin("LED color picker");
-        static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 1.0f);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth());
-        ImGui::ColorPicker4("", (float *) &color,
-                            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview |
-                            ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_DisplayRGB);
+            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                LOG_INFO << "Colour changed, executing";
 
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            LOG_INFO << "Colour changed, executing";
+                // Set the parameters
+                redBrightness.setCurrentValue(color.x * 255);
+                greenBrightness.setCurrentValue(color.y * 255);
+                blueBrightness.setCurrentValue(color.z * 255);
 
-            // Set the parameters
-            redBrightness.setCurrentValue(color.x * 255);
-            greenBrightness.setCurrentValue(color.y * 255);
-            blueBrightness.setCurrentValue(color.z * 255);
+                // Send the parameter update
+                Message messageP(20, 3, Message::TC, 1);
+                messageP.appendUint16(3); // Number of parameters to update
+                messageP.appendUint16(1); // Parameter ID
+                messageP.appendString(redBrightness.getValueAsString());
+                messageP.appendUint16(2); // Parameter ID
+                messageP.appendString(greenBrightness.getValueAsString());
+                messageP.appendUint16(3); // Parameter ID
+                messageP.appendString(blueBrightness.getValueAsString());
+                Service::storeMessage(messageP);
 
-            // Send the parameter update
-            Message messageP(20, 3, Message::TC, 1);
-            messageP.appendUint16(3); // Number of parameters to update
-            messageP.appendUint16(1); // Parameter ID
-            messageP.appendString(redBrightness.getValueAsString());
-            messageP.appendUint16(2); // Parameter ID
-            messageP.appendString(greenBrightness.getValueAsString());
-            messageP.appendUint16(3); // Parameter ID
-            messageP.appendString(blueBrightness.getValueAsString());
-            Service::storeMessage(messageP);
-
-            // Send the corresponding messages
-            std::queue<std::chrono::time_point<std::chrono::high_resolution_clock>> empty;
-            std::swap(lightUpdateQueue, empty); // Clears the queue
+                // Send the corresponding messages
+                std::queue<std::chrono::time_point<std::chrono::high_resolution_clock>> empty;
+                std::swap(lightUpdateQueue, empty); // Clears the queue
 
 
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now());
@@ -590,111 +606,127 @@ int main(int argc, char *argv[]) {
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 33ms);
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 97ms);
 //            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 351ms);
-            lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 99ms);
-        }
-        ImGui::End();
-
-        /*
-        ImGui::Begin("Task List");
-
-        ImGui::Text("FreeRTOS Task List:");
-        ImGui::Columns(4, "tasks"); // 4-ways, with border
-        ImGui::Separator();
-        ImGui::Text("ID"); ImGui::NextColumn();
-        ImGui::Text("Name"); ImGui::NextColumn();
-        ImGui::Text("%% CPU"); ImGui::NextColumn();
-        ImGui::Text("State"); ImGui::NextColumn();
-        ImGui::Separator();
-        static int selected = -1;
-
-        srand(time(NULL));
-
-        uint32_t sum = 0;
-        for (auto it = taskList.begin(); it != taskList.end(); it++) {
-            sum += it->second.runTime;
-        }
-
-        for (auto it = taskList.begin(); it != taskList.end(); it++) {
-            TaskInfo & task = it->second;
-
-            char label[32];
-            sprintf(label, "%02d", task.id);
-            if (ImGui::Selectable(label, selected == task.id, ImGuiSelectableFlags_SpanAllColumns)) {
-                selected = task.id;
+                lightUpdateQueue.push(std::chrono::high_resolution_clock::now() + 99ms);
             }
-            bool hovered = ImGui::IsItemHovered();
-            ImGui::NextColumn();
-            ImGui::Text(task.name.c_str()); ImGui::NextColumn();
+            ImGui::End();
 
-            float progress = task.runTime / (float) sum;
-            ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
-            ImGui::NextColumn();
+            /*
+                ImGui::Begin("Task List");
 
-            float hue;
-            std::string taskDescription;
-            eTaskState taskState = (eTaskState) (task.state);
+                ImGui::Text("FreeRTOS Task List:");
+                ImGui::Columns(4, "tasks"); // 4-ways, with border
+                ImGui::Separator();
+                ImGui::Text("ID");
+                ImGui::NextColumn();
+                ImGui::Text("Name");
+                ImGui::NextColumn();
+                ImGui::Text("%% CPU");
+                ImGui::NextColumn();
+                ImGui::Text("State");
+                ImGui::NextColumn();
+                ImGui::Separator();
+                static int selected = -1;
 
-            switch(taskState) {
-                case eRunning:
-                    hue = 0.286f;
-                    taskDescription = "RUNNING";
-                    break;
-                case eReady:
-                    hue = 0.214f;
-                    taskDescription = "READY";
-                    break;
-                case eBlocked:
-                    hue = 0.136f;
-                    taskDescription = "BLOCKED";
-                    break;
-                case eSuspended:
-                    hue = 0.025f;
-                    taskDescription = "SUSPENDED";
-                    break;
-                case eDeleted:
-                    hue = 0.819f;
-                    taskDescription = "DELETED";
-                    break;
-                default:
-                    hue = 0.875f;
-                    taskDescription = "INVALID";
-            }
+                srand(time(NULL));
 
-            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(hue, 0.9f, 0.6f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 1.0f, 0.7f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 1.0f, 0.8f));
-            ImGui::Button(taskDescription.c_str());
-            ImGui::PopStyleColor(3);
-            ImGui::NextColumn();
+                uint32_t sum = 0;
+                for (auto it = taskList.begin(); it != taskList.end(); it++) {
+                    sum += it->second.runTime;
+                }
+
+                for (auto it = taskList.begin(); it != taskList.end(); it++) {
+                    TaskInfo &task = it->second;
+
+                    char label[32];
+                    sprintf(label, "%02d", task.id);
+                    if (ImGui::Selectable(label, selected == task.id, ImGuiSelectableFlags_SpanAllColumns)) {
+                        selected = task.id;
+                    }
+                    bool hovered = ImGui::IsItemHovered();
+                    ImGui::NextColumn();
+                    ImGui::Text(task.name.c_str());
+                    ImGui::NextColumn();
+
+                    float progress = task.runTime / (float) sum;
+                    ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
+                    ImGui::NextColumn();
+
+                    float hue;
+                    std::string taskDescription;
+                    eTaskState taskState = (eTaskState) (task.state);
+
+                    switch (taskState) {
+                        case eRunning:
+                            hue = 0.286f;
+                            taskDescription = "RUNNING";
+                            break;
+                        case eReady:
+                            hue = 0.214f;
+                            taskDescription = "READY";
+                            break;
+                        case eBlocked:
+                            hue = 0.136f;
+                            taskDescription = "BLOCKED";
+                            break;
+                        case eSuspended:
+                            hue = 0.025f;
+                            taskDescription = "SUSPENDED";
+                            break;
+                        case eDeleted:
+                            hue = 0.819f;
+                            taskDescription = "DELETED";
+                            break;
+                        default:
+                            hue = 0.875f;
+                            taskDescription = "INVALID";
+                    }
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(hue, 0.9f, 0.6f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(hue, 1.0f, 0.7f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(hue, 1.0f, 0.8f));
+                    ImGui::Button(taskDescription.c_str());
+                    ImGui::PopStyleColor(3);
+                    ImGui::NextColumn();
+                }
+                ImGui::Columns(1);
+                ImGui::Separator();
+
+                ImGui::End();
+            */
+
+            // Rendering
+            int display_w, display_h;
+            glfwGetFramebufferSize(window, &display_w, &display_h);
+            glViewport(0, 0, display_w, display_h);
+            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+            glClear(GL_COLOR_BUFFER_BIT);
+            //glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound
+            ImGui::Render();
+            ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
+            glfwSwapBuffers(window);
+        } catch (...) {
+            std::string exception = typeid(std::current_exception()).name();
+            LOG_EMERGENCY << "Unhandled exception in main thread: " << exception;
+
+            std::this_thread::sleep_for(50ms);
         }
-        ImGui::Columns(1);
-        ImGui::Separator();
-
-        ImGui::End();
-        */
-
-        // Rendering
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
-        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
-        //glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound
-        ImGui::Render();
-        ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(window);
     }
 
     // Stop the acquisition thread
-    std::cout << "Stopping thread..." << std::endl;
+    LOG_DEBUG << "Stopping threads...";
     stop = true;
-//    dataThread.join();
-//    sqlThread.join();
-    std::cout << "Thread stopped." << std::endl;
 
     // Cleanup
     ImGui_ImplGlfwGL3_Shutdown();
     glfwTerminate();
+
+    auto future = std::async(std::launch::async, &std::thread::join, &dataThread);
+    if (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+        LOG_EMERGENCY << "Could not kill data acquisition thread, terminating with force";
+        std::terminate();
+    }
+
+    LOG_NOTICE << "Threads stopped";
 
     return 0;
 }
