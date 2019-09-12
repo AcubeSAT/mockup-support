@@ -487,7 +487,6 @@ int main(int argc, char *argv[]) {
 //        static std::map<int, std::queue<float>> values;
 
             static constexpr size_t graphSize = 500;
-            static constexpr int graphWidth = 500;
             static constexpr int graphHeight = 110;
             float tempStorage[graphSize];
 
@@ -513,6 +512,7 @@ int main(int argc, char *argv[]) {
             ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
             ImGui::Begin("Graphs");
+            int graphWidth = ImGui::GetContentRegionAvailWidth();
             {
                 static std::deque<float> values;
                 ImGui::PlotLines("", tempStorage, addToGraph(pow(brightness.getValue(), 0.3), values), 0, "Brightness",
