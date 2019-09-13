@@ -29,6 +29,12 @@ extern Parameter<float> brightness;
 extern Parameter<float> tempInternal;
 extern Parameter<float> tempExternal;
 
+// Tasks
+extern Parameter<uint32_t> taskCount;
+extern std::array<StringParameter, 14> taskNames;
+extern std::array<Parameter<uint32_t>, 14> taskTimes;
+extern std::array<Parameter<uint8_t>, 14> taskStates;
+
 /**
  * Adds all the parameters to the parameter service
  */

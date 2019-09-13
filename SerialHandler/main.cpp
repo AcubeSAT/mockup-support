@@ -71,7 +71,7 @@ bool stop = false;
 bool dataReceived = false;
 bool dataSent = false;
 bool dataSendingDB = false;
-bool dataSentDB = false;
+bool dataError = false;
 bool dataSendingZMQ = false;
 bool dataSentZMQ = false;
 bool zmqEnabled = true;
@@ -173,7 +173,7 @@ void dataAcquisition() {
                         encoded[result.out_len] = 0; // The null byte
                         boost::asio::write(serial, boost::asio::buffer(encoded, result.out_len + 1));
 
-                        dataSentDB = true;
+                        dataError = true;
                     }
 
                     boost::asio::read_until(serial, buf, '\0', ec);
@@ -221,6 +221,8 @@ void dataAcquisition() {
                                 // Housekeeping received
                                 Services.housekeeping.applyHousekeeping(*message);
                             }
+                        } else {
+                            dataError = true;
                         }
                     } else if (received[0] == Ping) {
                         // Do nothing
@@ -376,7 +378,7 @@ int main(int argc, char *argv[]) {
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
-            ImGui::Checkbox("Serial", &dataSentDB);
+            ImGui::Checkbox("Error", &dataError);
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.2f, 0.45f, 1.0f}));
@@ -389,9 +391,9 @@ int main(int argc, char *argv[]) {
 
             // Reset indicators so that they light up just for one frame
             dataReceived = dataSent = false;
-            if (dataSentDB) dataSendingDB = false;
+            if (dataError) dataSendingDB = false;
             if (dataSentZMQ) dataSendingZMQ = false;
-            dataSentDB = false;
+            dataError = false;
             dataSentZMQ = false;
             noiseGateActivated = {false, false, false};
 
@@ -409,8 +411,8 @@ int main(int argc, char *argv[]) {
                         ImGui::GetIO().Framerate);
             ImGui::End();
 
-            ImGui::SetNextWindowPos(ImVec2(20, 120), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(400, 525), ImGuiCond_Always);
+            ImGui::SetNextWindowPos(ImVec2(20, 100), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(400, 545), ImGuiCond_Always);
             ImGui::Begin("Parameter Management Service");
             static auto parameterList = Services.parameterManagement.getParamsList();
 
@@ -445,11 +447,13 @@ int main(int argc, char *argv[]) {
                 if (dynamic_cast<Parameter<uint8_t> *>(parameter) != nullptr) {
                     ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U8, parameter->ptr(), 1);
                 } else if (dynamic_cast<Parameter<uint32_t> *>(parameter) != nullptr) {
-                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 1);
+                    ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_U32, parameter->ptr(), 10);
                 } else if (dynamic_cast<Parameter<float> *>(parameter) != nullptr) {
                     ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Float, parameter->ptr(), 0.001, nullptr, nullptr, "%.3f");
                 } else if (dynamic_cast<Parameter<double> *>(parameter) != nullptr) {
                     ImGui::DragScalar(parIdToString[it->first].data(), ImGuiDataType_Double, parameter->ptr(), 0.001, nullptr, nullptr, "%.3f");
+                } else {
+                    ImGui::Text("Unknown parameter %d", it->first);
                 }
                 ImGui::PopFont();
 
@@ -616,89 +620,103 @@ int main(int argc, char *argv[]) {
             }
             ImGui::End();
 
-            /*
-                ImGui::Begin("Task List");
 
-                ImGui::Text("FreeRTOS Task List:");
-                ImGui::Columns(4, "tasks"); // 4-ways, with border
-                ImGui::Separator();
-                ImGui::Text("ID");
-                ImGui::NextColumn();
-                ImGui::Text("Name");
-                ImGui::NextColumn();
-                ImGui::Text("%% CPU");
-                ImGui::NextColumn();
-                ImGui::Text("State");
-                ImGui::NextColumn();
-                ImGui::Separator();
-                static int selected = -1;
+            ImGui::Begin("Task List");
 
-                srand(time(NULL));
+            ImGui::Text("FreeRTOS Task List:");
+            ImGui::Columns(4, "tasks"); // 4-ways, with border
+            ImGui::Separator();
+            ImGui::Text("ID");
+            ImGui::NextColumn();
+            ImGui::Text("Name");
+            ImGui::NextColumn();
+            ImGui::Text("%% CPU");
+            ImGui::NextColumn();
+            ImGui::Text("State");
+            ImGui::NextColumn();
+            ImGui::Separator();
+            static int selected = -1;
 
-                uint32_t sum = 0;
-                for (auto it = taskList.begin(); it != taskList.end(); it++) {
-                    sum += it->second.runTime;
+            srand(time(NULL));
+
+            taskList.clear();
+            for (int i = 0; i < 14; i++) {
+                if (taskNames[i].getValue().empty()) continue; // No blank tasks
+
+                taskList.insert(std::make_pair<std::string,TaskInfo>(taskNames[i].getValue().c_str(), TaskInfo {
+                        static_cast<unsigned int>(i),
+                        taskStates[i].getValue(),
+                        taskTimes[i].getValue(),
+                        taskNames[i].getValue().c_str()
+                }));
+            }
+
+            uint32_t sum = 0;
+            for (auto it = taskList.begin(); it != taskList.end(); it++) {
+                sum += it->second.runTime;
+            }
+
+            for (auto it = taskList.begin(); it != taskList.end(); it++) {
+                TaskInfo &task = it->second;
+
+                char label[32];
+                sprintf(label, "%02d", task.id);
+                if (ImGui::Selectable(label, selected == task.id, ImGuiSelectableFlags_SpanAllColumns)) {
+                    selected = task.id;
+                }
+                bool hovered = ImGui::IsItemHovered();
+                ImGui::NextColumn();
+                ImGui::Text(task.name.c_str());
+                ImGui::NextColumn();
+
+                float progress = task.runTime / (float) sum;
+                char overlayText[256];
+                snprintf(overlayText, 256, "%.1f %%", 100 * progress);
+                ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f), overlayText);
+                ImGui::NextColumn();
+
+                float hue;
+                std::string taskDescription;
+                eTaskState taskState = (eTaskState) (task.state);
+
+                switch (taskState) {
+                    case eRunning:
+                        hue = 0.286f;
+                        taskDescription = "RUNNING";
+                        break;
+                    case eReady:
+                        hue = 0.214f;
+                        taskDescription = "READY";
+                        break;
+                    case eBlocked:
+                        hue = 0.136f;
+                        taskDescription = "BLOCKED";
+                        break;
+                    case eSuspended:
+                        hue = 0.025f;
+                        taskDescription = "SUSPENDED";
+                        break;
+                    case eDeleted:
+                        hue = 0.819f;
+                        taskDescription = "DELETED";
+                        break;
+                    default:
+                        hue = 0.875f;
+                        taskDescription = "INVALID";
                 }
 
-                for (auto it = taskList.begin(); it != taskList.end(); it++) {
-                    TaskInfo &task = it->second;
+                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(hue, 0.9f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(hue, 1.0f, 0.7f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(hue, 1.0f, 0.8f));
+                ImGui::Button(taskDescription.c_str());
+                ImGui::PopStyleColor(3);
+                ImGui::NextColumn();
+            }
+            ImGui::Columns(1);
+            ImGui::Separator();
 
-                    char label[32];
-                    sprintf(label, "%02d", task.id);
-                    if (ImGui::Selectable(label, selected == task.id, ImGuiSelectableFlags_SpanAllColumns)) {
-                        selected = task.id;
-                    }
-                    bool hovered = ImGui::IsItemHovered();
-                    ImGui::NextColumn();
-                    ImGui::Text(task.name.c_str());
-                    ImGui::NextColumn();
+            ImGui::End();
 
-                    float progress = task.runTime / (float) sum;
-                    ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
-                    ImGui::NextColumn();
-
-                    float hue;
-                    std::string taskDescription;
-                    eTaskState taskState = (eTaskState) (task.state);
-
-                    switch (taskState) {
-                        case eRunning:
-                            hue = 0.286f;
-                            taskDescription = "RUNNING";
-                            break;
-                        case eReady:
-                            hue = 0.214f;
-                            taskDescription = "READY";
-                            break;
-                        case eBlocked:
-                            hue = 0.136f;
-                            taskDescription = "BLOCKED";
-                            break;
-                        case eSuspended:
-                            hue = 0.025f;
-                            taskDescription = "SUSPENDED";
-                            break;
-                        case eDeleted:
-                            hue = 0.819f;
-                            taskDescription = "DELETED";
-                            break;
-                        default:
-                            hue = 0.875f;
-                            taskDescription = "INVALID";
-                    }
-
-                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) ImColor::HSV(hue, 0.9f, 0.6f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) ImColor::HSV(hue, 1.0f, 0.7f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) ImColor::HSV(hue, 1.0f, 0.8f));
-                    ImGui::Button(taskDescription.c_str());
-                    ImGui::PopStyleColor(3);
-                    ImGui::NextColumn();
-                }
-                ImGui::Columns(1);
-                ImGui::Separator();
-
-                ImGui::End();
-            */
 
             // Rendering
             int display_w, display_h;
