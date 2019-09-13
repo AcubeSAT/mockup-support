@@ -21,7 +21,7 @@
 #include <cobs/cobs.h>
 #include <queue>
 #include <deque>
-
+#include <algorithm>
 
 using namespace std::chrono_literals;
 
@@ -212,13 +212,15 @@ void dataAcquisition() {
                         dataReceived = true;
 
                         // Space packet
-                        Message message = MessageParser::parseECSSTM(received + 1);
+                        std::optional<Message> message = MessageParser::parse(received + 1, std::min(static_cast<int>(result.out_len),255) - 1);
 
-                        LOG_TRACE << "Received ECSS[" << message.serviceType << "," << message.messageType << "]";
+                        if (message) {
+                            LOG_TRACE << "Received ECSS[" << message->serviceType << "," << message->messageType << "]";
 
-                        if (message.serviceType == 3 && message.messageType == 25) {
-                            // Housekeeping received
-                            Services.housekeeping.applyHousekeeping(message);
+                            if (message->serviceType == 3 && message->messageType == 25) {
+                                // Housekeeping received
+                                Services.housekeeping.applyHousekeeping(*message);
+                            }
                         }
                     } else if (received[0] == Ping) {
                         // Do nothing
@@ -510,7 +512,7 @@ int main(int argc, char *argv[]) {
             ImGui::End();
 
             ImGui::SetNextWindowPos(ImVec2(440, 20), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(470, 720), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(520, 720), ImGuiCond_Always);
             ImGui::Begin("Graphs");
             int graphWidth = ImGui::GetContentRegionAvailWidth();
             {
