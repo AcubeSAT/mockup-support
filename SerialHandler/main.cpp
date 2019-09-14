@@ -378,7 +378,7 @@ int main(int argc, char *argv[]) {
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.9f, 0.4f, 0.05f, 1.0f}));
-            ImGui::Checkbox("Error", &dataError);
+            ImGui::Checkbox("CRC", &dataError);
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4({0.6f, 0.2f, 0.45f, 1.0f}));
