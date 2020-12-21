@@ -1,5 +1,7 @@
-# Mock-Up code
+# Mock-Up Support code
 The code for the supporting hardware & software of the CubeSat mockup can be found here.
+
+![Screenshot of SerialHandler](screenshot.png)
 
 ## Directories
 - **Cubesat_Turntable_Motor**: Arduino code for the display turntable motor controller
